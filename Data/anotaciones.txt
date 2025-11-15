@@ -1,0 +1,2 @@
+En Usuario:
+Dni es de tipo int - Cambiar en la base de datos
