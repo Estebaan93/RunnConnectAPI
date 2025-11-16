@@ -1,2 +1,5 @@
 En Usuario:
 Dni es de tipo int - Cambiar en la base de datos
+
+categoria_evento:
+costoInscripcion - No puede ser nulo, debe si o si tener un costo la inscripcion
