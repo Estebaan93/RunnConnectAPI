@@ -21,7 +21,7 @@ namespace RunnConnectAPI.Models
     [Required]
     [Column(TypeName="varchar(20)")]
     public string EstadoPago {get;set;}= "pendiente";
-
+    
     [Column(TypeName="varchar(10)")]
     public string TalleRemera {get;set;} //xs, s, m , l ,xl, xxl 
     /*Ver disponibilidad del evento y ver si el evento entrega las remeras*/

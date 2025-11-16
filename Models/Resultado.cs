@@ -16,6 +16,24 @@ namespace RunnConnectAPI.Models
    //Estos campos se cargan por el organizador 
    public string? TiempoOficial {get;set;} 
 
+   public int? PosicionCategoria {get;set;}
 
+   public string? TiempoSmartWatch {get;set;}
+
+   public decimal? DistanciaKm {get;set;}
+
+   public string? RitmoPromedio {get;set;}     
+
+   public string? VelocidadPromedio {get;set;}
+
+   public int? CaloriasQuemadas {get;set;}
+
+   public int? PulsacionesPromedio {get;set;}
+
+   public int? PulsacionesMax {get;set;} 
+
+
+
+  
   }
 }
