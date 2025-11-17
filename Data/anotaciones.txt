@@ -3,3 +3,9 @@ Dni es de tipo int - Cambiar en la base de datos
 
 categoria_evento:
 costoInscripcion - No puede ser nulo, debe si o si tener un costo la inscripcion
+
+puntointeres:
+El nombre debe ser required - cambiar en la BD a no null
+
+resultado:
+tiempoOficial puede ser nulo porque el organizador carga los resultados post evento o en tiempo resultado
