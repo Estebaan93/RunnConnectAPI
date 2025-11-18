@@ -1,9 +1,20 @@
 //Program.cs
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using System.Text;
 using RunnConnectAPI.Data;
-var builder = WebApplication.CreateBuilder(args);
+using RunnConnectAPI.Services;
 
-// Add services to the container.
+var builder = WebApplication.CreateBuilder(args);
+var config = builder.Configuration; //Obtenemos la confi para usarla
+
+//Inyeccion de dependencias (Servicios)
+//Habilitar controllers
+builder.Services.AddControllers();
+
+
+// Habilitar Swagger
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -16,40 +27,72 @@ builder.Services.AddDbContext<RunnersContext>(options =>
     )
 );
 
+//Registrar JWTService para inyeccion de dependencias
+builder.Services.AddScoped<JWTService>();
+
+
+//CORS (Para que la app se pueda conectar)
+builder.Services.AddCors(options =>
+{
+  options.AddPolicy("AllowAllPolicy",
+    policy =>
+    {
+      policy.AllowAnyOrigin() //Cualquier origen para el desarrollo
+            .AllowAnyMethod() //Permite cualquier metodo HTTP (GET, POST, PUT etc)
+            .AllowAnyHeader(); //PErmite cualquier cabecera
+    });
+});
+
+
+// Configurar Autenticacion JWT
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+      options.TokenValidationParameters = new TokenValidationParameters
+      {
+        // Que validar:
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+
+        // Valores validos (leidos desde appsettings.json):
+        ValidIssuer = config["Jwt:Issuer"],
+        ValidAudience = config["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Jwt:Key"]))
+      };
+    });
+  
+//Configurar autorizacion
+builder.Services.AddAuthorization();  
+
+
+
+//Construccion de la app y config del Pipeline HTTP
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configure the HTTP request pipeline (El orden importa).
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+  app.UseSwagger();
+  app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+//Aplicar politicas de CORS
+app.UseCors("AllowAllPolicy");
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+//Aplicar Autenticacion (Antes de Autorizacion)
+app.UseAuthentication();
+
+//Aplicar Autorizacion
+app.UseAuthorization();
+
+//Mapear los Controllers 
+app.MapControllers();
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+

@@ -35,7 +35,7 @@ namespace RunnConnectAPI.Services // Define el espacio de nombres donde vive est
 
       var token = new JwtSecurityToken(
         issuer: _config["Jwt:Issuer"],
-        audience: _config["Kwt:Audience"],
+        audience: _config["Jwt:Audience"],
         claims: claims,
         expires: DateTime.UtcNow.AddHours(1), //Vaido por 1 hora
         signingCredentials: creds
