@@ -6,6 +6,7 @@ using RunnConnectAPI.Models;
 using RunnConnectAPI.Repositories;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using RunnConnectAPI.Services;
 
 namespace RunnConnectAPI.Controllers
 {
@@ -15,11 +16,114 @@ namespace RunnConnectAPI.Controllers
   public class UsuarioController : ControllerBase
   {
     private readonly UsuarioRepositorio _usuarioRepositorio;
+    private readonly JWTService _jwtService;
+    private readonly PasswordService _passwordService;
 
-    public UsuarioController(UsuarioRepositorio usuarioRepositorio)
+    public UsuarioController(UsuarioRepositorio usuarioRepositorio, JWTService jwtService, PasswordService passwordService)
     {
       _usuarioRepositorio = usuarioRepositorio;
+      _jwtService = jwtService;
+      _passwordService = passwordService;
     }
+
+    /*Autenticacion (Login y Registro)
+    POST: api/usuario/login*/
+    [AllowAnonymous]
+    [HttpPost("Login")]
+    public async Task<IActionResult> Login([FromBody] LoginRequestDto loginRequestDto)
+    {
+      //Validamos el modelo DataAnnotations
+      if (!ModelState.IsValid)
+        return BadRequest(ModelState);
+
+      //Buscar por email
+      var usuario = await _usuarioRepositorio.GetByEmailAsync(loginRequestDto.Email);
+
+      if (usuario == null)
+      {
+        return Unauthorized(new { message = "Email o contraseña incorrecta" });
+      }
+
+      //Verificamos la contraseña
+      var passwordValido = _passwordService.VerifyPassword(loginRequestDto.Password, usuario.PasswordHash);
+
+      if (!passwordValido)
+      {
+        return Unauthorized(new { mesage = "Email o contraseña incorrectos" });
+
+      }
+
+      //Generar token
+      var token = _jwtService.GenerarToken(usuario);
+
+      //Retornar token
+      return Ok(new
+      {
+        token,
+        message = "Login exitoso",
+        usuario = new
+        {
+          idUsuario = usuario.IdUsuario,
+          nombre = usuario.Nombre,
+          apellido = usuario.Apellido,
+          email = usuario.Email,
+          tipoUsuario = usuario.TipoUsuario
+        }
+      });
+    }
+
+  /*Registro de nuevo usuarios y retorna un JWT para login automatico
+  POST: api/usuarios/registro*/
+  [AllowAnonymous]
+  [HttpPost("Register")]
+  public async Task<IActionResult> Register([FromBody] RegisterRequestDto registerRequestDto)
+    {
+      //Validamos el modelo
+      if(!ModelState.IsValid)
+        return BadRequest(ModelState);
+
+
+      //Validar que el email exista (reutilzmos el metod que ya tenemos)
+      var emailExistente= await _usuarioRepositorio.EmailExistenteAsync(registerRequestDto.Email);
+      if (emailExistente)
+      {
+        return BadRequest(new {message="El email ya esta registrado"});
+      }
+
+      //Validar el DNI no exista
+      var dniExiste= await _usuarioRepositorio.DniExisteAsync(registerRequestDto.Dni);
+      if (dniExiste)
+      {
+        return BadRequest(new {message="El DNI ya esta registrado"});
+      }
+
+      //Crear obj usuario
+      var usuario= new Usuario
+            {
+                Nombre = registerRequestDto.Nombre,
+                Apellido = registerRequestDto.Apellido,
+                Email = registerRequestDto.Email,
+                Telefono = registerRequestDto.Telefono,
+                Dni = registerRequestDto.Dni,
+                TipoUsuario = registerRequestDto.TipoUsuario,
+                FechaNacimiento = registerRequestDto.FechaNacimiento,
+                Genero = registerRequestDto.Genero,
+                Localidad = registerRequestDto.Localidad,
+                Agrupacion = registerRequestDto.Agrupacion,
+                TelefonoEmergencia = registerRequestDto.TelefonoEmergencia,
+                Password = _passwordService.HashPassword(registerRequestDto.Password), // Hashear password
+                Estado = true // Usuario activo por defecto
+            };
+
+
+
+
+
+    }
+
+
+
+
 
     /*GET- Obtener perfil*/
     [HttpGet("perfil")]
@@ -205,22 +309,22 @@ namespace RunnConnectAPI.Controllers
     public async Task<IActionResult> EliminarCuenta()
     {
       //Obtenemos el id del usuario desde el token
-      var userIdClaim= User.FindFirst(ClaimTypes.NameIdentifier);
-      if(userIdClaim==null)
-        return Unauthorized(new {message="No autorizado"});
+      var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+      if (userIdClaim == null)
+        return Unauthorized(new { message = "No autorizado" });
 
-      var userId= int.Parse(userIdClaim.Value);
+      var userId = int.Parse(userIdClaim.Value);
 
       //Buscamos el usuario en la BD
-      var usuario= await _usuarioRepositorio.GetByIdAsync(userId);
+      var usuario = await _usuarioRepositorio.GetByIdAsync(userId);
 
-      if(usuario==null)
-        return NotFound(new {message="Usuario no encontrado"});
+      if (usuario == null)
+        return NotFound(new { message = "Usuario no encontrado" });
 
       //Eliminado logico su estado pasa a falso
       await _usuarioRepositorio.DeleteLogicoAsync(usuario);
 
-      return Ok(new {message="Cuenta eliminada exitosamente"});
+      return Ok(new { message = "Cuenta eliminada exitosamente" });
     }
 
 
