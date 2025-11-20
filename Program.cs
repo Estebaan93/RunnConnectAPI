@@ -5,11 +5,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Text;
 using RunnConnectAPI.Data;
 using RunnConnectAPI.Services;
+using RunnConnectAPI.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration; //Obtenemos la confi para usarla
 
-//Inyeccion de dependencias (Servicios)
 //Habilitar controllers
 builder.Services.AddControllers();
 
@@ -29,7 +29,11 @@ builder.Services.AddDbContext<RunnersContext>(options =>
 
 //Registrar JWTService para inyeccion de dependencias
 builder.Services.AddScoped<JWTService>();
+builder.Services.AddScoped<PasswordService>();
 
+//Repos
+builder.Services.AddScoped<UsuarioRepositorio>();
+builder.Services.AddScoped<EventoRepositorio>();
 
 //CORS (Para que la app se pueda conectar)
 builder.Services.AddCors(options =>
@@ -65,7 +69,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
   
 //Configurar autorizacion
 builder.Services.AddAuthorization();  
-
 
 
 //Construccion de la app y config del Pipeline HTTP

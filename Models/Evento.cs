@@ -11,7 +11,7 @@ namespace RunnConnectAPI.Models
     public int IdEvento {get;set;}
 
     [Required(ErrorMessage ="El nombre del evento es requerido")]
-    [StringLength(255, MinimumLength =3, ErrorMessage ="El Nombre debe tener mas 3 caracteres")]
+    [StringLength(255, MinimumLength =3, ErrorMessage ="El nombre debe tener mas 3 caracteres")]
     public string Nombre {get;set;}= string.Empty;
 
     [Column(TypeName ="text")]
@@ -20,8 +20,9 @@ namespace RunnConnectAPI.Models
     [Required(ErrorMessage ="La fecha y hora del evento son requeridss")]
     public DateTime FechaHora {get;set;}
 
+    [Required(ErrorMessage ="El lugar es requerido")]
     [StringLength(255)]
-    public string? Lugar {get;set;}
+    public string Lugar {get;set;}= string.Empty;
 
     public int? CupoTotal {get;set;}
 
@@ -31,8 +32,13 @@ namespace RunnConnectAPI.Models
     [StringLength(255)]
     public string? UrlPronosticoClima {get;set;}
 
+    [Required(ErrorMessage ="Los datos para el pago son obligatorios")]
     [Column(TypeName ="text")]
-    public string? DatosPago {get;set;}
+    public string DatosPago {get;set;}= string.Empty;
+
+    [Required]
+    [Column(TypeName ="varchar(20)")]
+    public string Estado{get;set;}= "publicado";
 
   }
 }

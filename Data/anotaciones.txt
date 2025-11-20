@@ -1,9 +1,9 @@
 En Usuario:
 Dni es de tipo int - Cambiar en la base de datos
-Falta agregar el campo - Estado para dar de baja logica
+Falta agregar el campo Estado para dar de baja logica
 Falta agregar el numero (runner/organizador)
-
-
+Algunos campos solo estan para runner, en la BD esta comentado en la tabla
+Se agrego el campo imgAvatar 
 
 
 categoria_evento:
@@ -18,3 +18,12 @@ El nombre debe ser required - cambiar en la BD a no null
 
 resultado:
 tiempoOficial puede ser nulo porque el organizador carga los resultados post evento o en tiempo resultado
+
+eventos:
+Se agrega el campo estado como "enum" para el evento (publicado, cancelado, finalizado)
+El runner puede ver eventos proximos sin estar logueado, imaginemos que el descarga la app pero no se registra... Desde la pantalla de logueo puede ver 
+de alguna forma proximos eventos, si le interes puede inscribirse...
+
+
+inscripcion:
+acepto deslinde debe ser no nulo y falso - para que el runner me acepte el deslinde a true (1)

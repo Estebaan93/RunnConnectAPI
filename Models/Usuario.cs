@@ -54,6 +54,10 @@ namespace RunnConnectAPI.Models
     [RegularExpression(@"^\d{6,15}$", ErrorMessage = "El telefono debe contener solo numeros")]
     public string? TelefonoEmergencia { get; set; }
 
+    [StringLength(500, ErrorMessage = "La URL del avatar no puede exceder 500 caracteres")]
+    [Url(ErrorMessage = "La URL del avatar no es valida")]
+    public string? ImgAvatar { get; set; }
+
     //Estado para borrado logico
     [Column("estado", TypeName = "tinyint(1)")]
     public bool Estado { get; set; } = true;

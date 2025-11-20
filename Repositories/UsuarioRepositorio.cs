@@ -2,7 +2,6 @@
 using Microsoft.EntityFrameworkCore; //Para las consultas y operaciones con la BD
 using RunnConnectAPI.Data;          // DbContext del proyecto
 using RunnConnectAPI.Models;        //Entidades
-using System.Threading.Tasks;       // Metodos async
 
 namespace RunnConnectAPI.Repositories
 {
@@ -28,13 +27,13 @@ namespace RunnConnectAPI.Repositories
       return await _context.Usuarios.FirstOrDefaultAsync(u=> u.Email==email && u.Estado); //Devuelve el primero o null 
     }
 
-    //Verificar si existe un email (solo activos)
+    //Verificar si existe un email (solo activos runner/organizadores)
     public async Task<bool> EmailExistenteAsync(string email)
     {
       return await _context.Usuarios.AnyAsync(u=> u.Email==email && u.Estado); //True si existe
     } 
 
-    //Verificar si existe un DNI (solo activos)
+    //Verificar si existe un DNI (solo activos y runner)
     public async Task<bool> DniExisteAsync(int dni)
     {
       return await _context.Usuarios.AnyAsync(u=>u.Dni==dni && u.Estado); //True si existe

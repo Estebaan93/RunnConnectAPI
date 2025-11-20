@@ -26,8 +26,11 @@ namespace RunnConnectAPI.Models
     public string TalleRemera {get;set;} //xs, s, m , l ,xl, xxl 
     /*Ver disponibilidad del evento y ver si el evento entrega las remeras*/
 
+    [Required]
+    [Column(TypeName="tinnyint(1)")]
     public bool AceptoDeslinde {get; set;}= false;
 
+    [StringLength(255)]
     public string? ComprobantePagoURL {get;set;}
 
   }

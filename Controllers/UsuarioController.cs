@@ -5,7 +5,6 @@ using RunnConnectAPI.Models.Dto.Usuario;
 using RunnConnectAPI.Models;
 using RunnConnectAPI.Repositories;
 using System.Security.Claims;
-using System.Threading.Tasks;
 using RunnConnectAPI.Services;
 
 namespace RunnConnectAPI.Controllers
@@ -26,7 +25,7 @@ namespace RunnConnectAPI.Controllers
       _passwordService = passwordService;
     }
 
-    /*Autenticacion (Login y Registro)
+    /*Autenticacion (Login comun para ambos RUNNER/ORGAN)
     POST: api/usuario/login*/
     [AllowAnonymous]
     [HttpPost("Login")]
@@ -72,55 +71,128 @@ namespace RunnConnectAPI.Controllers
       });
     }
 
-  /*Registro de nuevo usuarios y retorna un JWT para login automatico
-  POST: api/usuarios/registro*/
-  [AllowAnonymous]
-  [HttpPost("Register")]
-  public async Task<IActionResult> Register([FromBody] RegisterRequestDto registerRequestDto)
+    /*Registro de nuevo usuarios RUNNERs y retorna un JWT para login automatico
+    POST: api/usuarios/RegisterRunner*/
+    [AllowAnonymous]
+    [HttpPost("RegisterRunner")]
+    public async Task<IActionResult> Register([FromBody] RegisterRunnerDto dto)
     {
-      //Validamos el modelo
-      if(!ModelState.IsValid)
+     // 1. Validar modelo
+      if (!ModelState.IsValid)
         return BadRequest(ModelState);
 
-
-      //Validar que el email exista (reutilzmos el metod que ya tenemos)
-      var emailExistente= await _usuarioRepositorio.EmailExistenteAsync(registerRequestDto.Email);
-      if (emailExistente)
+      // 2. Validar que el email no exista
+      var emailExiste = await _usuarioRepositorio.EmailExistenteAsync(dto.Email);
+      if (emailExiste)
       {
-        return BadRequest(new {message="El email ya esta registrado"});
+        return BadRequest(new { message = "El email ya esta registrado" });
       }
 
-      //Validar el DNI no exista
-      var dniExiste= await _usuarioRepositorio.DniExisteAsync(registerRequestDto.Dni);
+      // 3. Validar que el DNI no exista
+      var dniExiste = await _usuarioRepositorio.DniExisteAsync(dto.Dni);
       if (dniExiste)
       {
-        return BadRequest(new {message="El DNI ya esta registrado"});
+        return BadRequest(new { message = "El DNI ya esta registrado" });
       }
 
-      //Crear obj usuario
-      var usuario= new Usuario
-            {
-                Nombre = registerRequestDto.Nombre,
-                Apellido = registerRequestDto.Apellido,
-                Email = registerRequestDto.Email,
-                Telefono = registerRequestDto.Telefono,
-                Dni = registerRequestDto.Dni,
-                TipoUsuario = registerRequestDto.TipoUsuario,
-                FechaNacimiento = registerRequestDto.FechaNacimiento,
-                Genero = registerRequestDto.Genero,
-                Localidad = registerRequestDto.Localidad,
-                Agrupacion = registerRequestDto.Agrupacion,
-                TelefonoEmergencia = registerRequestDto.TelefonoEmergencia,
-                Password = _passwordService.HashPassword(registerRequestDto.Password), // Hashear password
-                Estado = true // Usuario activo por defecto
-            };
+      // 4. Crear usuario Runner
+      var usuario = new Usuario
+      {
+        Nombre = dto.Nombre,
+        Apellido = dto.Apellido,
+        Email = dto.Email,
+        Telefono = dto.Telefono,
+        Dni = dto.Dni, // Requerido para runners
+        TipoUsuario = "runner", // Forzado a "runner"
+        FechaNacimiento = dto.FechaNacimiento,
+        Genero = dto.Genero,
+        Localidad = dto.Localidad,
+        Agrupacion = dto.Agrupacion,
+        TelefonoEmergencia = dto.TelefonoEmergencia,
+        PasswordHash = _passwordService.HashPassword(dto.Password),
+        Estado = true
+      };
 
+      // 5. Guardar en BD
+      await _usuarioRepositorio.CreateAsync(usuario);
 
+      // 6. Generar token JWT para login automático
+      var token = _jwtService.GenerarToken(usuario);
 
-
-
+      // 7. Retornar respuesta
+      return Ok(new
+      {
+        token,
+        message = "Runner registrado correctamente",
+        usuario = new
+        {
+          idUsuario = usuario.IdUsuario,
+          nombre = usuario.Nombre,
+          apellido = usuario.Apellido,
+          email = usuario.Email,
+          tipoUsuario = usuario.TipoUsuario,
+          dni = usuario.Dni
+        }
+      }); 
     }
 
+
+    /*Registro de nuevos ORGANIZADORES y retorna el token
+    POST_ api/usuario/RegisterOrganizador */    
+    [AllowAnonymous]
+    [HttpPost("RegisterOrganizador")]
+    public async Task<IActionResult> RegisterOrganizador([FromBody] RegisterOrganizadorDto dto)
+    {
+      // 1. Validar modelo
+      if (!ModelState.IsValid)
+        return BadRequest(ModelState);
+
+      // 2. Validar que el email no exista
+      var emailExiste = await _usuarioRepositorio.EmailExistenteAsync(dto.Email);
+      if (emailExiste)
+      {
+        return BadRequest(new { message = "El email ya esta registrado" });
+      }
+
+      // 3. Crear usuario Organizador
+      var usuario = new Usuario
+      {
+        Nombre = dto.Nombre,
+        Apellido = dto.Apellido,
+        Email = dto.Email,
+        Telefono = dto.Telefono,
+        Dni = null, // NULL para organizadores
+        TipoUsuario = "organizador", // Forzado a "organizador"
+        FechaNacimiento = null, // NULL para organizadores
+        Genero = null, // NULL para organizadores
+        Localidad = dto.Localidad,
+        Agrupacion = null, // NULL para organizadores
+        TelefonoEmergencia = null, // NULL para organizadores
+        PasswordHash = _passwordService.HashPassword(dto.Password),
+        Estado = true
+      };
+
+      // 4. Guardar en BD
+      await _usuarioRepositorio.CreateAsync(usuario);
+
+      // 5. Generar token JWT para login automatico
+      var token = _jwtService.GenerarToken(usuario);
+
+      // 6. Retornar respuesta
+      return Ok(new
+      {
+        token,
+        message = "Organizador registrado correctamente",
+        usuario = new
+        {
+          idUsuario = usuario.IdUsuario,
+          nombre = usuario.Nombre,
+          apellido = usuario.Apellido,
+          email = usuario.Email,
+          tipoUsuario = usuario.TipoUsuario
+        }
+      });
+    }
 
 
 
@@ -162,32 +234,35 @@ namespace RunnConnectAPI.Controllers
     }
 
 
-    //PUT- actualizar perfil de un usuario 
-    [HttpPut("perfil")]
-    public async Task<IActionResult> ActualizarPerfil([FromBody] ActualizarPerfilDto request)
+    //PUT- actualizar perfil de un usuario RUNNER
+    [HttpPut("ActualizarPerfilRunner")]
+    public async Task<IActionResult> ActualizarPerfilRunner([FromBody] ActualizarPerfilRunnerDto request)
     {
-      // Validar el modelo segun las Data Annotations del DTO
+      // Validar modelo
       if (!ModelState.IsValid)
         return BadRequest(ModelState);
 
-      // Obtener ID del usuario autenticado desde el token
+      // Obtener ID del usuario desde el token
       var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
       if (userIdClaim == null)
         return Unauthorized(new { message = "No autorizado" });
 
       var userId = int.Parse(userIdClaim.Value);
 
-      // Buscar el usuario en la BD
+      // Buscar usuario en la BD
       var usuario = await _usuarioRepositorio.GetByIdAsync(userId);
 
       if (usuario == null)
         return NotFound(new { message = "Usuario no encontrado" });
 
-      // Actualizar campos (Nombre es requerido y telefono, siempre viene)
+      // Verificar que el usuario sea runner
+      if (usuario.TipoUsuario.ToLower() != "runner")
+        return BadRequest(new { message = "Este endpoint es solo para runners" });
+
+      // Actualizar campos
       usuario.Nombre = request.Nombre;
       usuario.Telefono = request.Telefono;
 
-      // Campos opcionales
       if (request.Apellido != null)
         usuario.Apellido = request.Apellido;
 
@@ -212,7 +287,7 @@ namespace RunnConnectAPI.Controllers
       // Retornar usuario actualizado
       return Ok(new
       {
-        message = "Perfil actualizado exitosamente",
+        message = "Perfil de runner actualizado exitosamente",
         usuario = new
         {
           idUsuario = usuario.IdUsuario,
@@ -231,6 +306,62 @@ namespace RunnConnectAPI.Controllers
       });
     }
 
+
+    /*PUT: api/Usuario/ActualizarPerfilOrganizador
+    Actualiza el perfil de un Organizador autenticado*/
+    [HttpPut("ActualizarPerfilOrganizador")]
+    public async Task<IActionResult> ActualizarPerfilOrganizador([FromBody] ActualizarPerfilOrganizadorDto request)
+    {
+      // Validar modelo
+      if (!ModelState.IsValid)
+        return BadRequest(ModelState);
+
+      // Obtener ID del usuario desde el token
+      var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+      if (userIdClaim == null)
+        return Unauthorized(new { message = "No autorizado" });
+
+      var userId = int.Parse(userIdClaim.Value);
+
+      // Buscar usuario en la BD
+      var usuario = await _usuarioRepositorio.GetByIdAsync(userId);
+
+      if (usuario == null)
+        return NotFound(new { message = "Usuario no encontrado" });
+
+      // Verificar que el usuario sea organizador
+      if (usuario.TipoUsuario.ToLower() != "organizador")
+        return BadRequest(new { message = "Este endpoint es solo para organizadores" });
+
+      // Actualizar campos
+      usuario.Nombre = request.Nombre;
+      usuario.Telefono = request.Telefono;
+
+      if (request.Apellido != null)
+        usuario.Apellido = request.Apellido;
+
+      if (!string.IsNullOrEmpty(request.Localidad))
+        usuario.Localidad = request.Localidad;
+
+      // Guardar cambios en la BD
+      await _usuarioRepositorio.UpdateAsync(usuario);
+
+      // Retornar usuario actualizado
+      return Ok(new
+      {
+        message = "Perfil de organizador actualizado exitosamente",
+        usuario = new
+        {
+          idUsuario = usuario.IdUsuario,
+          nombre = usuario.Nombre,
+          apellido = usuario.Apellido,
+          email = usuario.Email,
+          telefono = usuario.Telefono,
+          tipoUsuario = usuario.TipoUsuario,
+          localidad = usuario.Localidad
+        }
+      });
+    }
 
     //verificar email antes de registrar
     //GET - api/usuarios/verificarEmail
@@ -253,7 +384,7 @@ namespace RunnConnectAPI.Controllers
       });
     }
 
-    //verificar dni si esta disponible antes de registrase
+    //verificar dni si esta disponible antes de registrase solo RUNNERS
     //GET - api/usuarios/verificarDni
     [AllowAnonymous]
     [HttpGet("verificarDni")]
@@ -300,6 +431,37 @@ namespace RunnConnectAPI.Controllers
         agrupacion = usuario.Agrupacion
       });
     }
+
+    /* GET: api/Usuario/Organizador/{id}
+      Obtiene el perfil público detallado de un Organizador*/
+    [AllowAnonymous]
+[HttpGet("Organizador/{id}")]
+public async Task<IActionResult> ObtenerPerfilOrganizador(int id)
+{
+  // Buscar usuario por id (solo activos)
+  var usuario = await _usuarioRepositorio.GetByIdAsync(id);
+
+  // Si no existe o está eliminado
+  if (usuario == null)
+    return NotFound(new { message = "Usuario no encontrado" });
+
+  // Verificar que sea organizador
+  if (usuario.TipoUsuario.ToLower() != "organizador")
+    return BadRequest(new { message = "El usuario no es un organizador" });
+
+  // Retornar información pública del organizador
+  return Ok(new
+  {
+    idUsuario = usuario.IdUsuario,
+    nombre = usuario.Nombre,
+    apellido = usuario.Apellido,
+    tipoUsuario = usuario.TipoUsuario,
+    localidad = usuario.Localidad,
+    telefono = usuario.Telefono, // Telefono público para contacto
+    email = usuario.Email // Email público para consultas
+    // Nota: No incluimos campos sensibles como passwordHash, estado, etc.
+  });
+}
 
     //eliminiacion logica cambia estado
     //DELETE - /api/usuarios/perfil
