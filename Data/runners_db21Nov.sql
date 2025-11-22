@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 20-11-2025 a las 04:18:11
+-- Tiempo de generación: 21-11-2025 a las 13:14:22
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -93,6 +93,40 @@ CREATE TABLE `notificaciones_evento` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `perfiles_organizadores`
+--
+
+CREATE TABLE `perfiles_organizadores` (
+  `idPerfilOrganizador` int(11) NOT NULL,
+  `idUsuario` int(11) NOT NULL COMMENT 'FK a la tabla usuarios',
+  `razonSocial` varchar(100) NOT NULL COMMENT 'Nombre Legal y Oficial de la entidad',
+  `nombreComercial` varchar(100) DEFAULT NULL COMMENT 'Nombre de marca que se usa públicamente (puede ser igual al campo nombre en usuarios)',
+  `cuit_taxid` varchar(30) NOT NULL COMMENT 'CUIT/ID Fiscal de la organización',
+  `direccionLegal` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `perfiles_runners`
+--
+
+CREATE TABLE `perfiles_runners` (
+  `idPerfilRunner` int(11) NOT NULL,
+  `idUsuario` int(11) NOT NULL COMMENT 'FK a la tabla usuarios',
+  `nombre` varchar(100) NOT NULL COMMENT 'Nombre de Pila del Runner',
+  `apellido` varchar(100) NOT NULL COMMENT 'Apellido del Runner',
+  `fechaNacimiento` date NOT NULL,
+  `genero` enum('F','M','X') NOT NULL,
+  `dni` int(11) NOT NULL COMMENT 'DNI del Runner',
+  `localidad` varchar(100) DEFAULT NULL,
+  `agrupacion` varchar(100) DEFAULT NULL COMMENT 'Agrupación o team',
+  `telefonoEmergencia` varchar(50) NOT NULL COMMENT 'Contacto de emergencia'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `puntosinteres`
 --
 
@@ -148,19 +182,13 @@ CREATE TABLE `rutas` (
 
 CREATE TABLE `usuarios` (
   `idUsuario` int(11) NOT NULL,
-  `nombre` varchar(100) NOT NULL COMMENT 'Nombre (si es Runner) o Nombre de Entidad (si es Organizador)',
-  `apellido` varchar(100) DEFAULT NULL COMMENT 'Apellido (solo para Runners, NULL para Organizadores)',
+  `nombre` varchar(100) NOT NULL COMMENT 'Nombre de Pila (Runner) o Nombre Comercial (Organizador)',
   `email` varchar(100) NOT NULL,
   `telefono` int(11) NOT NULL COMMENT 'Numero de celu',
   `passwordHash` varchar(255) NOT NULL,
   `tipoUsuario` enum('runner','organizador') NOT NULL,
-  `fechaNacimiento` date DEFAULT NULL COMMENT 'Solo para Runners',
-  `genero` enum('F','M','X') DEFAULT NULL COMMENT 'Genero del usuario (solo para Runners)',
-  `dni` int(11) DEFAULT NULL COMMENT 'DNI(solo para Runners)',
-  `localidad` varchar(100) DEFAULT NULL COMMENT 'Localidad de origen (para Runners)',
-  `agrupacion` varchar(100) DEFAULT NULL COMMENT 'Agrupación o team (ej. UTEP) (solo para Runners)',
-  `telefonoEmergencia` varchar(50) DEFAULT NULL COMMENT 'Contacto de emergencia (solo para Runners)',
-  `estado` tinyint(1) NOT NULL DEFAULT 1 COMMENT '0 false, 1 true (Al crear) sera de estado true'
+  `estado` tinyint(1) NOT NULL DEFAULT 1 COMMENT '0 false, 1 true (Al crear) sera de estado true',
+  `imgAvatar` varchar(500) DEFAULT NULL COMMENT 'URL o ruta del avatar del usuario'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -197,6 +225,23 @@ ALTER TABLE `notificaciones_evento`
   ADD KEY `idEvento` (`idEvento`);
 
 --
+-- Indices de la tabla `perfiles_organizadores`
+--
+ALTER TABLE `perfiles_organizadores`
+  ADD PRIMARY KEY (`idPerfilOrganizador`),
+  ADD UNIQUE KEY `razonSocial` (`razonSocial`),
+  ADD UNIQUE KEY `cuit_taxid` (`cuit_taxid`),
+  ADD UNIQUE KEY `idUsuario_UNIQUE` (`idUsuario`);
+
+--
+-- Indices de la tabla `perfiles_runners`
+--
+ALTER TABLE `perfiles_runners`
+  ADD PRIMARY KEY (`idPerfilRunner`),
+  ADD UNIQUE KEY `dni` (`dni`),
+  ADD UNIQUE KEY `idUsuario_UNIQUE` (`idUsuario`);
+
+--
 -- Indices de la tabla `puntosinteres`
 --
 ALTER TABLE `puntosinteres`
@@ -223,8 +268,7 @@ ALTER TABLE `rutas`
 ALTER TABLE `usuarios`
   ADD PRIMARY KEY (`idUsuario`),
   ADD UNIQUE KEY `email` (`email`),
-  ADD KEY `email_2` (`email`),
-  ADD KEY `dni` (`dni`);
+  ADD KEY `email_2` (`email`);
 
 --
 -- AUTO_INCREMENT de las tablas volcadas
@@ -253,6 +297,18 @@ ALTER TABLE `inscripciones`
 --
 ALTER TABLE `notificaciones_evento`
   MODIFY `idNotificacion` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `perfiles_organizadores`
+--
+ALTER TABLE `perfiles_organizadores`
+  MODIFY `idPerfilOrganizador` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `perfiles_runners`
+--
+ALTER TABLE `perfiles_runners`
+  MODIFY `idPerfilRunner` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `puntosinteres`
@@ -306,6 +362,18 @@ ALTER TABLE `inscripciones`
 --
 ALTER TABLE `notificaciones_evento`
   ADD CONSTRAINT `notificaciones_evento_ibfk_1` FOREIGN KEY (`idEvento`) REFERENCES `eventos` (`idEvento`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `perfiles_organizadores`
+--
+ALTER TABLE `perfiles_organizadores`
+  ADD CONSTRAINT `fk_perfiles_organizadores_usuarios` FOREIGN KEY (`idUsuario`) REFERENCES `usuarios` (`idUsuario`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `perfiles_runners`
+--
+ALTER TABLE `perfiles_runners`
+  ADD CONSTRAINT `fk_perfiles_runners_usuarios` FOREIGN KEY (`idUsuario`) REFERENCES `usuarios` (`idUsuario`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `puntosinteres`

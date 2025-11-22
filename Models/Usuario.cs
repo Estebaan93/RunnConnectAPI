@@ -16,8 +16,8 @@ namespace RunnConnectAPI.Models
     [StringLength(100, MinimumLength = 2, ErrorMessage = "El nombre debe tener mas de 2 caracteres")]
     public string Nombre { get; set; } = string.Empty;
 
-    [StringLength(100, MinimumLength = 2, ErrorMessage = "El apellido debe contener mas de 2 caracteres")]
-    public string Apellido { get; set; }
+    /*[StringLength(100, MinimumLength = 2, ErrorMessage = "El apellido debe contener mas de 2 caracteres")]
+    public string Apellido { get; set; }*/
 
     [Required(ErrorMessage = "El email es requerido")]
     [EmailAddress(ErrorMessage = "El formato del email no es valido")]
@@ -36,9 +36,10 @@ namespace RunnConnectAPI.Models
     [Column(TypeName = "varchar(20)")]
     public string TipoUsuario { get; set; } = string.Empty; //"runner" o "organizador"
 
-    public DateTime? FechaNacimiento { get; set; }
+    /*public DateTime? FechaNacimiento { get; set; }*/
 
-    [Column(TypeName = "varchar(1)")]
+    /*[Column(TypeName = "varchar(1)")]
+    [RegularExpression(@"^[FMX]$", ErrorMessage = "El genero debe ser F, M o X")]
     public string? Genero { get; set; } //"F", "M" o "X"
 
     [Range(1000000, 99999999, ErrorMessage = "El DNI debe tener entre 7 y 8 digitos")]
@@ -52,7 +53,7 @@ namespace RunnConnectAPI.Models
 
     [StringLength(50)]
     [RegularExpression(@"^\d{6,15}$", ErrorMessage = "El telefono debe contener solo numeros")]
-    public string? TelefonoEmergencia { get; set; }
+    public string? TelefonoEmergencia { get; set; }*/
 
     [StringLength(500, ErrorMessage = "La URL del avatar no puede exceder 500 caracteres")]
     [Url(ErrorMessage = "La URL del avatar no es valida")]
@@ -61,6 +62,10 @@ namespace RunnConnectAPI.Models
     //Estado para borrado logico
     [Column("estado", TypeName = "tinyint(1)")]
     public bool Estado { get; set; } = true;
+
+    //Navgacion EF puede inferirla
+    public PerfilRunner? PerfilRunner {get;set;}
+    public PerfilOrganizador? PerfilOrganizador {get;set;}
 
   }
 }

@@ -14,17 +14,23 @@ namespace RunnConnectAPI.Repositories
     {
       _context= context;
     }
-
+    /*Consultas para usuarios*/
     //Obtenemos usuario por ID(clave primaria)
     public async Task<Usuario?> GetByIdAsync(int id)
     {
-      return await _context.Usuarios.FirstOrDefaultAsync(u=>u.IdUsuario== id && u.Estado); //Busca por PK y que esten activos
+      return await _context.Usuarios //Busca por PK y que esten activos
+          .Include(u=>u.PerfilRunner)
+          .Include(u=>u.PerfilOrganizador)
+          .FirstOrDefaultAsync(u=>u.IdUsuario==id&&u.Estado);
     }
 
     //Obtener por email y que esten activos
     public async Task<Usuario?> GetByEmailAsync(string email)
     {
-      return await _context.Usuarios.FirstOrDefaultAsync(u=> u.Email==email && u.Estado); //Devuelve el primero o null 
+      return await _context.Usuarios //Devuelve el primero o null 
+          .Include(u => u.PerfilRunner)
+          .Include(u => u.PerfilOrganizador)
+          .FirstOrDefaultAsync(u => u.Email == email && u.Estado);
     }
 
     //Verificar si existe un email (solo activos runner/organizadores)
@@ -36,15 +42,30 @@ namespace RunnConnectAPI.Repositories
     //Verificar si existe un DNI (solo activos y runner)
     public async Task<bool> DniExisteAsync(int dni)
     {
-      return await _context.Usuarios.AnyAsync(u=>u.Dni==dni && u.Estado); //True si existe
+      return await _context.PerfilesRunners.AnyAsync(u=>u.Dni==dni); //True si existe
     }
 
+    /*Verficar si existe un CUIT (solo organizadores)*/
+    public async Task<bool> CuitExisteAsync(string cuit)
+    {
+      return await _context.PerfilesOrganizadores.AnyAsync(p=>p.CuitTaxId== cuit);
+    }
+
+    /*Operacione CRUD*/
     //Crear nuevo usuario por defecto true
     public async Task<Usuario> CreateAsync(Usuario usuario)
     {
       _context.Usuarios.Add(usuario);       //Marca la entidad como nueva
       await _context.SaveChangesAsync();    //Persite en la BD
       return usuario;                       //Devuelve el obj creado
+    }
+
+    /*Crear perfil runner*/
+    public async Task<PerfilRunner>CreatePerfilRunnerAsync(PerfilRunner perfil)
+    {
+      _context.PerfilesRunners.Add(perfil);
+      await _context.SaveChangesAsync();
+      return perfil;
     }
 
     //Actualizar usuario
@@ -54,12 +75,26 @@ namespace RunnConnectAPI.Repositories
       await _context.SaveChangesAsync();  //Persiste cambios 
     }
 
+    /*Actualizar perfil runner*/
+    public async Task UpdatePerfilRunnerAsync(PerfilRunner perfil)
+    {
+      _context.PerfilesRunners.Update(perfil);
+      await _context.SaveChangesAsync();
+    }
+
+    /*Actualizar perfil organizador*/
+    public async Task UpdatePerfilOrganizadorAsync(PerfilOrganizador perfil)
+    {
+      _context.PerfilesOrganizadores.Update(perfil);
+      await _context.SaveChangesAsync();
+    }
+
     //Eliminar persistente
-    public async Task DeleteAsync(Usuario usuario)
+    /*public async Task DeleteAsync(Usuario usuario)
     {
       _context.Usuarios.Remove(usuario);    // Marca la entidad como eliminada
       await _context.SaveChangesAsync();    // Persiste eliminacion
-    }
+    }*/
 
     //Eliminado logico
     public async Task DeleteLogicoAsync(Usuario usuario)

@@ -1,0 +1,56 @@
+TOTAL 15
+http://localhost:5000/api/Usuario
+AUTENTICACIÓN (3)
+1. POST /Login - Login unificado
+  autorizacion: publico
+  content-type: application/json
+  request: token bearer
+  body:
+    json
+    {
+      "email":"test@test.com",
+      "password":"12345"
+    }
+
+2. POST /RegisterRunner - Registro de corredor
+  autorizacion: publico
+  content-type: multipart/form-data
+  Form Data:
+    nombre: Juan
+    apellido: Pérez
+    email: juan@example.com
+    password: 123456
+    confirmPassword: 123456
+    dni: 12345678
+    telefono: 2664123456
+    fechaNacimiento: 1990-01-01        [OPCIONAL]
+    genero: M                          [OPCIONAL: F, M, X]
+    localidad: San Luis                [OPCIONAL]
+    agrupacion: Running Team SL        [OPCIONAL]
+    telefonoEmergencia: 2664987654     [OPCIONAL]
+    imgAvatar: [archivo.jpg]           [OPCIONAL: max 20MB]
+  
+3. POST /RegisterOrganizador - Registro de organizador
+
+GESTION DE PERFIL (3)
+GET /Perfil - Ver perfil propio
+PUT /ActualizarPerfilRunner - Actualizar perfil corredor
+PUT /ActualizarPerfilOrganizador - Actualizar perfil organizador
+
+GESTION DE CONTRASEÑA (1)
+PUT /CambiarPassword - Cambiar contraseña
+
+GESTION DE AVATAR (2)
+PUT /Avatar - Subir/cambiar avatar
+DELETE /Avatar - Restaurar avatar por defecto
+
+VERIFICACIONES PUBLICAS (2)
+GET /VerificarEmail - Verificar disponibilidad email
+GET /VerificarDni - Verificar disponibilidad DNI
+
+PERFILES PUBLICOS (2)
+GET /{id} - Ver perfil publico básico
+GET /Organizador/{id} - Ver perfil organizador con contacto
+
+GESTION DE CUENTA (1)
+DELETE /Perfil - Eliminar cuenta (borrado logico)
