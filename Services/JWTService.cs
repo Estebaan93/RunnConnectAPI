@@ -19,20 +19,32 @@ namespace RunnConnectAPI.Services // Define el espacio de nombres donde vive est
     //Metodo que genera un JWT para un usuario
     public string GenerarToken(Usuario usuario)
     {
+      //Determinar el nombre segun el usuario
+      string nombreCompleto= usuario.Nombre;
+
+      // Si es runner y tiene perfil cargado, usar nombre + apellido
+      if (usuario.TipoUsuario.ToLower() == "runner" && usuario.PerfilRunner != null)
+      {
+        nombreCompleto = $"{usuario.PerfilRunner.Nombre} {usuario.PerfilRunner.Apellido}";
+      }
+
       //Lista de claims (dentro del token)
       var claims = new List<Claim>
       {
         new Claim(ClaimTypes.NameIdentifier, usuario.IdUsuario.ToString()),
         new Claim(ClaimTypes.Email, usuario.Email),
-        new Claim(ClaimTypes.Name, usuario.Apellido !=null ? $"{usuario.Nombre} {usuario.Apellido}" : usuario.Nombre),
+        new Claim(ClaimTypes.Name, nombreCompleto),
         new Claim(ClaimTypes.Role, usuario.TipoUsuario),
         new Claim("TipoUsuario", usuario.TipoUsuario)
       };
 
+      //Clave secreta para firma token
       var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"])); //Clave secreta para firmar el token
+      
+      //Credenciales de firma
       var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256); //Credencias de forma usando HMAC-SHA256
 
-
+      //Crear token
       var token = new JwtSecurityToken(
         issuer: _config["Jwt:Issuer"],
         audience: _config["Jwt:Audience"],
@@ -44,6 +56,8 @@ namespace RunnConnectAPI.Services // Define el espacio de nombres donde vive est
       return new JwtSecurityTokenHandler().WriteToken(token);
 
     }
+
+    /*Valida un token y retorna el claimPrincipal*/
     public ClaimsPrincipal? ValidarToken(string token)
     {
       try
@@ -72,6 +86,8 @@ namespace RunnConnectAPI.Services // Define el espacio de nombres donde vive est
       }
     }
 
+
+    /*Obtenemos el Id del usuario desde el token*/
     public int? ObtenerIdUsuarioDelToken(string token)
     {
       var principal = ValidarToken(token);
@@ -86,6 +102,8 @@ namespace RunnConnectAPI.Services // Define el espacio de nombres donde vive est
       return null;
     }
 
+
+    /*Obtenemos el tipo de usuario desde el token*/
     public string? ObtenerTipoUsuarioDelToken(string token)
     {
       var principal = ValidarToken(token);

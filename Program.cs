@@ -30,6 +30,7 @@ builder.Services.AddDbContext<RunnersContext>(options =>
 //Registrar JWTService para inyeccion de dependencias
 builder.Services.AddScoped<JWTService>();
 builder.Services.AddScoped<PasswordService>();
+builder.Services.AddScoped<FileService>();
 
 //Repos
 builder.Services.AddScoped<UsuarioRepositorio>();

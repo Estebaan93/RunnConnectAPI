@@ -24,7 +24,7 @@ namespace RunnConnectAPI.Models
 
     [StringLength(100)]
     [Column("nombreComercial")]
-    public string? NombreComercial { get; set; }
+    public string NombreComercial { get; set; }= string.Empty;
 
     [Required(ErrorMessage = "El CUIT es obligatorio")]
     [StringLength(30)]
@@ -33,7 +33,7 @@ namespace RunnConnectAPI.Models
 
     [StringLength(255)]
     [Column("direccionLegal")]
-    public string? DireccionLegal { get; set; }
+    public string DireccionLegal { get; set; }= string.Empty;
 
     // Navegacion
     [ForeignKey("IdUsuario")]

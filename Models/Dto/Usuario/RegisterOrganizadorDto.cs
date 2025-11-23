@@ -37,16 +37,18 @@ public class RegisterOrganizadorDto
     [StringLength(100, MinimumLength = 2, ErrorMessage = "La razon social debe tener entre 2 y 100 caracteres")]
     public string RazonSocial { get; set; } = string.Empty;
 
+    [Required(ErrorMessage ="El nombre comercial es obligatorio")]
     [StringLength(100, ErrorMessage = "El nombre comercial no puede exceder 100 caracteres")]
-    public string? NombreComercial { get; set; }
+    public string NombreComercial { get; set; }=string.Empty;
 
     [Required(ErrorMessage = "El CUIT es obligatorio")]
     [StringLength(30, MinimumLength = 11, ErrorMessage = "El CUIT debe tener entre 11 y 30 caracteres")]
     [RegularExpression(@"^\d{2}-\d{8}-\d{1}$|^\d{11}$", ErrorMessage = "El CUIT debe tener formato XX-XXXXXXXX-X o 11 dígitos")]
     public string CuitTaxId { get; set; } = string.Empty;
 
+    [Required(ErrorMessage ="La direccion legal es obligatoria")]
     [StringLength(255, ErrorMessage = "La direccion legal no puede exceder 255 caracteres")]
-    public string? DireccionLegal { get; set; }
+    public string DireccionLegal { get; set; }= string.Empty;
 
 
     /*Avatar opcional - Se envia como archivo en multipart/Form-data

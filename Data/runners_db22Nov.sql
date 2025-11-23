@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 21-11-2025 a las 13:14:22
+-- Tiempo de generación: 23-11-2025 a las 00:26:57
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -100,9 +100,9 @@ CREATE TABLE `perfiles_organizadores` (
   `idPerfilOrganizador` int(11) NOT NULL,
   `idUsuario` int(11) NOT NULL COMMENT 'FK a la tabla usuarios',
   `razonSocial` varchar(100) NOT NULL COMMENT 'Nombre Legal y Oficial de la entidad',
-  `nombreComercial` varchar(100) DEFAULT NULL COMMENT 'Nombre de marca que se usa públicamente (puede ser igual al campo nombre en usuarios)',
+  `nombreComercial` varchar(100) NOT NULL COMMENT 'Nombre de marca que se usa públicamente (puede ser igual al campo nombre en usuarios)',
   `cuit_taxid` varchar(30) NOT NULL COMMENT 'CUIT/ID Fiscal de la organización',
-  `direccionLegal` varchar(255) DEFAULT NULL
+  `direccionLegal` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -116,11 +116,11 @@ CREATE TABLE `perfiles_runners` (
   `idUsuario` int(11) NOT NULL COMMENT 'FK a la tabla usuarios',
   `nombre` varchar(100) NOT NULL COMMENT 'Nombre de Pila del Runner',
   `apellido` varchar(100) NOT NULL COMMENT 'Apellido del Runner',
-  `fechaNacimiento` date NOT NULL,
+  `fechaNacimiento` datetime NOT NULL,
   `genero` enum('F','M','X') NOT NULL,
   `dni` int(11) NOT NULL COMMENT 'DNI del Runner',
-  `localidad` varchar(100) DEFAULT NULL,
-  `agrupacion` varchar(100) DEFAULT NULL COMMENT 'Agrupación o team',
+  `localidad` varchar(100) NOT NULL,
+  `agrupacion` varchar(100) NOT NULL COMMENT 'Agrupacin o libre (si no tiene)',
   `telefonoEmergencia` varchar(50) NOT NULL COMMENT 'Contacto de emergencia'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

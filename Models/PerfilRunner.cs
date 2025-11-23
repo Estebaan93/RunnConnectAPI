@@ -17,7 +17,7 @@ namespace RunnConnectAPI.Models
     [Column("idUsuario")]
     public int IdUsuario {get;set;}  
 
-[Required(ErrorMessage = "El nombre es obligatorio")]
+    [Required(ErrorMessage = "El nombre es obligatorio")]
     [StringLength(100, MinimumLength = 2)]
     [Column("nombre")]
     public string Nombre { get; set; } = string.Empty;
@@ -28,7 +28,7 @@ namespace RunnConnectAPI.Models
     public string Apellido { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "La fecha de nacimiento es obligatoria")]
-    [Column("fechaNacimiento", TypeName = "date")]
+    [Column("fechaNacimiento", TypeName = "dateTime")]
     public DateTime FechaNacimiento { get; set; }
 
     [Required(ErrorMessage = "El genero es obligatorio")]
@@ -38,21 +38,23 @@ namespace RunnConnectAPI.Models
     [Required(ErrorMessage = "El DNI es obligatorio")]
     [Column("dni")]
     public int Dni { get; set; }
-
+    
+    [Required(ErrorMessage ="La localidad es requerida")]
     [StringLength(100)]
     [Column("localidad")]
-    public string? Localidad { get; set; }
+    public string Localidad { get; set; }= string.Empty;
 
+    [Required(ErrorMessage ="La agrupacion es requerida (Si no tiene colocar LIBRE)")]
     [StringLength(100)]
     [Column("agrupacion")]
-    public string? Agrupacion { get; set; }
+    public string Agrupacion { get; set; }= string.Empty;
 
     [Required(ErrorMessage = "El telefono de emergencia es obligatorio")]
     [StringLength(50)]
     [Column("telefonoEmergencia")]
     public string TelefonoEmergencia { get; set; } = string.Empty;
 
-    // Navegación
+    // Navegacion
     [ForeignKey("IdUsuario")]
     public Usuario Usuario { get; set; } = null!;
 

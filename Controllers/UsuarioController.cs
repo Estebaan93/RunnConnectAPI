@@ -57,7 +57,6 @@ namespace RunnConnectAPI.Controllers
         {
           idUsuario = usuario.IdUsuario,
           nombre = usuario.Nombre,
-          apellido = usuario.Apellido,
           email = usuario.Email,
           tipoUsuario = usuario.TipoUsuario,
           imgAvatar = avatarUrl
@@ -82,48 +81,51 @@ namespace RunnConnectAPI.Controllers
 
       if (await _usuarioRepositorio.DniExisteAsync(dto.Dni))
         return Conflict(new { message = "El DNI ya esta registrado" });
-      
+
       //Validamos la edad minima
-      if(dto.FechaNacimiento.HasValue)
-      {
-        var edad = DateTime.Today.Year - dto.FechaNacimiento.Value.Year;
-        if (dto.FechaNacimiento.Value.Date > DateTime.Today.AddYears(-edad))
-          edad--;
+      var edad = DateTime.Today.Year - dto.FechaNacimiento.Year;
+      if (dto.FechaNacimiento.Date > DateTime.Today.AddYears(-edad))
+        edad--;
 
-        if (edad < 14)
-          return BadRequest(new { message = "Debes tener al menos 14 años para registrarte" });
+      if (edad < 14)
+        return BadRequest(new { message = "Debes tener al menos 14 años para registrarte" });
 
-        if (dto.FechaNacimiento.Value > DateTime.Today)
-          return BadRequest(new { message = "La fecha de nacimiento no puede ser futura" });
-      }
+      if (dto.FechaNacimiento > DateTime.Today)
+        return BadRequest(new { message = "La fecha de nacimiento no puede ser futura" });
+
 
       //Normalizamos genero
-      if (!string.IsNullOrEmpty(dto.Genero))
-      {
-        dto.Genero = dto.Genero.ToUpper().Trim();
-        if (dto.Genero != "F" && dto.Genero != "M" && dto.Genero != "X")
-          return BadRequest(new { message = "El genero debe ser F, M o X" });
-      }
-      // Crear usuario (sin avatar todavia)
+      var generoNormalizado = dto.Genero.ToUpper().Trim();
+
+      // Crear usuario en la tabla usuarios (sin avatar todavia)
       var usuario = new Usuario
       {
         Nombre = dto.Nombre.Trim(),
-        Apellido = dto.Apellido.Trim(),
         Email = dto.Email.ToLower(),
         PasswordHash = _passwordService.HashPassword(dto.Password),
         Telefono = dto.Telefono,
         TipoUsuario = "runner",
-        Dni = dto.Dni,
-        FechaNacimiento = dto.FechaNacimiento,
-        Genero = dto.Genero,
-        Localidad = dto.Localidad.Trim(),
-        Agrupacion = dto.Agrupacion.Trim(),
-        TelefonoEmergencia = dto.TelefonoEmergencia.Trim(),
         Estado = true
       };
 
       // Guardar usuario primero para obtener el ID
       await _usuarioRepositorio.CreateAsync(usuario);
+
+      /*Crear perfil runner en la tabla perfiles_runners*/
+      var perfilRunner = new PerfilRunner
+      {
+        IdUsuario = usuario.IdUsuario,
+        Nombre = dto.Nombre.Trim(),
+        Apellido = dto.Apellido.Trim(),
+        Dni = dto.Dni,
+        FechaNacimiento = dto.FechaNacimiento,
+        Genero = generoNormalizado,
+        Localidad = dto.Localidad?.Trim(),
+        Agrupacion = dto.Agrupacion?.Trim(),
+        TelefonoEmergencia = dto.TelefonoEmergencia.Trim()
+      };
+
+      await _usuarioRepositorio.CreatePerfilRunnerAsync(perfilRunner);
 
       // Gestionar avatar (opcional)
       try
@@ -156,8 +158,8 @@ namespace RunnConnectAPI.Controllers
         usuario = new
         {
           idUsuario = usuario.IdUsuario,
-          nombre = usuario.Nombre,
-          apellido = usuario.Apellido,
+          nombre = perfilRunner.Nombre,
+          apellido = perfilRunner.Apellido,
           email = usuario.Email,
           tipoUsuario = usuario.TipoUsuario,
           imgAvatar = avatarUrlCompleta
@@ -178,24 +180,37 @@ namespace RunnConnectAPI.Controllers
         return BadRequest(ModelState);
 
       // Validaciones email unico
-      if (await _usuarioRepositorio.EmailExistenteAsync(dto.Email))
+      if (await _usuarioRepositorio.EmailExistenteAsync(dto.Email.Trim().ToLower()))
         return Conflict(new { message = "El email ya esta registrado" });
 
-      // Crear usuario (sin avatar todavía)
+      if (await _usuarioRepositorio.CuitExisteAsync(dto.CuitTaxId.Trim()))
+        return Conflict(new { message = "El CUIT ya esta registrado" });
+
+      // Crear usuario en la tabla usuarios(sin avatar todavía)
       var usuario = new Usuario
       {
         Nombre = dto.Nombre.Trim(),
-        Apellido = dto.Apellido.Trim(),
         Email = dto.Email.Trim().ToLower(),
         PasswordHash = _passwordService.HashPassword(dto.Password),
         Telefono = dto.Telefono,
         TipoUsuario = "organizador",
-        Localidad = dto.Localidad.Trim(),
         Estado = true
       };
 
       // Guardar usuario primero para obtener el ID
       await _usuarioRepositorio.CreateAsync(usuario);
+
+      //Crear perfil organizador en la tabla  perfiles_organizadores
+      var PerfilOrganizador = new PerfilOrganizador
+      {
+        IdUsuario = usuario.IdUsuario,
+        RazonSocial = dto.RazonSocial,
+        NombreComercial = dto.NombreComercial.Trim(),
+        CuitTaxId = dto.CuitTaxId.Trim(),
+        DireccionLegal = dto.DireccionLegal.Trim()
+      };
+
+      await _usuarioRepositorio.CreatePerfilOrganizadorAsync(PerfilOrganizador);
 
       // Gestionar avatar (opcional)
       try
@@ -209,7 +224,7 @@ namespace RunnConnectAPI.Controllers
         usuario.ImgAvatar = avatarUrl;
         await _usuarioRepositorio.UpdateAsync(usuario);
       }
-      catch(Exception ex)
+      catch (Exception ex)
       {
         // Si falla la subida, asignar avatar por defecto
         Console.Write(ex.Message);
@@ -229,7 +244,7 @@ namespace RunnConnectAPI.Controllers
         {
           idUsuario = usuario.IdUsuario,
           nombre = usuario.Nombre,
-          apellido = usuario.Apellido,
+          RazonSocial = PerfilOrganizador.RazonSocial,
           email = usuario.Email,
           tipoUsuario = usuario.TipoUsuario,
           imgAvatar = avatarUrlCompleta
@@ -260,29 +275,50 @@ namespace RunnConnectAPI.Controllers
       var avatarUrl = _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
 
       //Mapeamos a obj anonimo (sin Pass ni Estado)
-      var usuarioResponse = new
+      if (usuario.TipoUsuario == "runner" && usuario.PerfilRunner != null)
       {
-        idUsuario = usuario.IdUsuario,
-        nombre = usuario.Nombre,
-        apellido = usuario.Apellido,
-        email = usuario.Email,
-        telefono = usuario.Telefono,
-        tipoUsuario = usuario.TipoUsuario,
-        fechaNacimiento = usuario.FechaNacimiento,
-        genero = usuario.Genero,
-        dni = usuario.Dni,
-        localidad = usuario.Localidad,
-        agrupacion = usuario.Agrupacion,
-        telefonoEmergencia = usuario.TelefonoEmergencia,
-        imgAvatar = avatarUrl,
-        esAvatarPorDefecto = _fileService.EsAvatarPorDefecto(usuario.ImgAvatar),
-        estado = usuario.Estado
-      };
-      return Ok(usuarioResponse);
+        return Ok(new
+        {
+          idUsuario = usuario.IdUsuario,
+          nombre = usuario.Nombre,
+          apellido = usuario.PerfilRunner.Apellido,
+          email = usuario.Email,
+          telefono = usuario.Telefono,
+          tipoUsuario = usuario.TipoUsuario,
+          fechaNacimiento = usuario.PerfilRunner.FechaNacimiento,
+          genero = usuario.PerfilRunner.Genero,
+          dni = usuario.PerfilRunner.Dni,
+          localidad = usuario.PerfilRunner.Localidad,
+          agrupacion = usuario.PerfilRunner.Agrupacion,
+          telefonoEmergencia = usuario.PerfilRunner.TelefonoEmergencia,
+          imgAvatar = avatarUrl,
+          esAvatarPorDefecto = _fileService.EsAvatarPorDefecto(usuario.ImgAvatar),
+          estado = usuario.Estado
+        });
+      }
+      else if (usuario.TipoUsuario == "organizador" && usuario.PerfilOrganizador != null)
+      {
+        return Ok(new
+        {
+          idUsuario = usuario.IdUsuario,
+          nombre = usuario.Nombre,
+          razonSocial = usuario.PerfilOrganizador.RazonSocial,
+          nombreComercial = usuario.PerfilOrganizador.NombreComercial,
+          cuit = usuario.PerfilOrganizador.CuitTaxId,
+          direccionLegal = usuario.PerfilOrganizador.DireccionLegal,
+          email = usuario.Email,
+          telefono = usuario.Telefono,
+          tipoUsuario = usuario.TipoUsuario,
+          imgAvatar = avatarUrl,
+          esAvatarPorDefecto = _fileService.EsAvatarPorDefecto(usuario.ImgAvatar),
+          estado = usuario.Estado
+        });
+      }
+      return BadRequest(new { message = "Perfil incompleto" });
     }
 
 
-    /*actualizar perfil de un usuario RUNNER
+    /*actualizar perfil de un usuario RUNNER - Actualiza usuarios + perfiles_runners
     PUT: api/Usuario/ActualizarPerfilRunner
     Content-Type: application/json*/
     [HttpPut("ActualizarPerfilRunner")]
@@ -309,19 +345,22 @@ namespace RunnConnectAPI.Controllers
       if (usuario.TipoUsuario.ToLower() != "runner")
         return BadRequest(new { message = "Este endpoint es solo para runners" });
 
+      if (usuario.PerfilRunner == null)
+        return BadRequest(new { message = "Perfil runner no encontrado" });
+
       // Validar edad mínima (14 años)
-      if (dto.FechaNacimiento.HasValue)
-      {
-        var edad = DateTime.Today.Year - dto.FechaNacimiento.Value.Year;
-        if (dto.FechaNacimiento.Value.Date > DateTime.Today.AddYears(-edad))
-          edad--;
+      var fechaNacimiento = dto.FechaNacimiento;
 
-        if (edad < 14)
-          return BadRequest(new { message = "Debes tener al menos 14 años para participar" });
+      var edad = DateTime.Today.Year - dto.FechaNacimiento.Year;
+      if (dto.FechaNacimiento.Date > DateTime.Today.AddYears(-edad))
+        edad--;
 
-        if (dto.FechaNacimiento.Value > DateTime.Today)
-          return BadRequest(new { message = "La fecha de nacimiento no puede ser futura" });
-      }
+      if (edad < 14)
+        return BadRequest(new { message = "Debes tener al menos 14 años para participar" });
+
+      if (dto.FechaNacimiento > DateTime.Today)
+        return BadRequest(new { message = "La fecha de nacimiento no puede ser futura" });
+
 
       // Normalizar y validar genero
       if (!string.IsNullOrEmpty(dto.Genero))
@@ -329,19 +368,23 @@ namespace RunnConnectAPI.Controllers
         dto.Genero = dto.Genero.ToUpper().Trim();
         if (dto.Genero != "F" && dto.Genero != "M" && dto.Genero != "X")
           return BadRequest(new { message = "El genero debe ser F, M o X" });
-      }  
+      }
+
+      //Actualizar la tabla usuarios
+      usuario.Nombre = dto.Nombre.Trim();
+      usuario.Telefono = dto.Telefono;
+      await _usuarioRepositorio.UpdateAsync(usuario);
+
+      //Actualizar tabla perfiles_runners
+      usuario.PerfilRunner.Nombre = dto.Nombre.Trim();
+      usuario.PerfilRunner.Apellido = dto.Apellido.Trim();
 
       //ACTUALIZAR CAMPOS CON NORMALIZACION (DNI y Email NO se actualizan)
-      usuario.Nombre = dto.Nombre.Trim();
-      usuario.Apellido = dto.Apellido?.Trim();
-      usuario.Telefono = dto.Telefono;
-      usuario.FechaNacimiento = dto.FechaNacimiento;
-      usuario.Genero = dto.Genero;
-      usuario.Localidad = dto.Localidad?.Trim();
-      usuario.Agrupacion = dto.Agrupacion?.Trim();
-      usuario.TelefonoEmergencia = dto.TelefonoEmergencia?.Trim();
+      usuario.PerfilRunner.Localidad = dto.Localidad.Trim();
+      usuario.PerfilRunner.Agrupacion = dto.Agrupacion.Trim();
+      usuario.PerfilRunner.TelefonoEmergencia = dto.TelefonoEmergencia.Trim();
 
-      await _usuarioRepositorio.UpdateAsync(usuario);
+      await _usuarioRepositorio.UpdatePerfilRunnerAsync(usuario.PerfilRunner);
 
       return Ok(new
       {
@@ -350,16 +393,16 @@ namespace RunnConnectAPI.Controllers
         {
           idUsuario = usuario.IdUsuario,
           nombre = usuario.Nombre,
-          apellido = usuario.Apellido,
+          apellido = usuario.PerfilRunner.Apellido,
           email = usuario.Email,
           telefono = usuario.Telefono,
           tipoUsuario = usuario.TipoUsuario,
-          fechaNacimiento = usuario.FechaNacimiento,
-          genero = usuario.Genero,
-          dni = usuario.Dni,
-          localidad = usuario.Localidad,
-          agrupacion = usuario.Agrupacion,
-          telefonoEmergencia = usuario.TelefonoEmergencia
+          fechaNacimiento = usuario.PerfilRunner.FechaNacimiento,
+          genero = usuario.PerfilRunner.Genero,
+          dni = usuario.PerfilRunner.Dni,
+          localidad = usuario.PerfilRunner.Localidad,
+          agrupacion = usuario.PerfilRunner.Agrupacion,
+          telefonoEmergencia = usuario.PerfilRunner.TelefonoEmergencia
         }
       });
     }
@@ -392,14 +435,20 @@ namespace RunnConnectAPI.Controllers
       if (usuario.TipoUsuario.ToLower() != "organizador")
         return BadRequest(new { message = "Este endpoint es solo para organizadores" });
 
-      // Actualizar campos con normalizacion (Email no se actualiza)
+      // Actualizar la tabla usuarios (Email no se actualiza)
       usuario.Nombre = dto.Nombre.Trim();
-      usuario.Apellido = dto.Apellido?.Trim();
       usuario.Telefono = dto.Telefono;
-      usuario.Localidad = dto.Localidad?.Trim();      
 
       // Guardar cambios en la BD
       await _usuarioRepositorio.UpdateAsync(usuario);
+
+      //Actualiza la tabla perfiles_organizadores
+      usuario.PerfilOrganizador.RazonSocial = dto.RazonSocial.Trim();
+      usuario.PerfilOrganizador.NombreComercial = dto.NombreComercial.Trim();
+      usuario.PerfilOrganizador.DireccionLegal = dto.DireccionLegal.Trim();
+
+      //Guardamos en la BD
+      await _usuarioRepositorio.UpdatePerfilOrganizadorAsync(usuario.PerfilOrganizador);
 
       // Retornar usuario actualizado
       return Ok(new
@@ -409,11 +458,12 @@ namespace RunnConnectAPI.Controllers
         {
           idUsuario = usuario.IdUsuario,
           nombre = usuario.Nombre,
-          apellido = usuario.Apellido,
+          razonSocial = usuario.PerfilOrganizador.RazonSocial,
+          nombreComercial = usuario.PerfilOrganizador.NombreComercial,
           email = usuario.Email,
           telefono = usuario.Telefono,
           tipoUsuario = usuario.TipoUsuario,
-          localidad = usuario.Localidad
+          direccionLegal = usuario.PerfilOrganizador.DireccionLegal
         }
       });
     }
@@ -421,7 +471,7 @@ namespace RunnConnectAPI.Controllers
     /*Gestion de contraseña - cambiar la contraseña de usuario
     PUT: api/Usuario/CambiarPassword
     Content-Type: application/json*/
-[Authorize]
+    [Authorize]
     [HttpPut("CambiarPassword")]
     public async Task<IActionResult> CambiarPassword([FromBody] CambiarPasswordDto dto)
     {
@@ -496,36 +546,72 @@ namespace RunnConnectAPI.Controllers
 
     }
 
+    /*Verificar CUIT del organizador
+    GET: api/Usuario/VerificarCuit?cuit=20-1234578-9*/
+    [AllowAnonymous]
+    [HttpGet("VerificarCuit")]
+    public async Task<IActionResult> VerificarCuit([FromQuery] string cuit)
+    {
+      if (string.IsNullOrEmpty(cuit))
+        return BadRequest(new { message = "CUIT requerido" });
+
+      var existe = await _usuarioRepositorio.CuitExisteAsync(cuit.Trim());
+
+      return Ok(new
+      {
+        disponible = !existe,
+        message = existe ? "CUIT ya registrado" : "CUIT disponible"
+      });
+    }
+
+
     /*Ver perfil publico (por ej si un runner consulta la posicion, puede ver quienes son los otros runner)
     tambien ver el perfil de un organizador - conlleva a mostrar una vista personalizada por los datos sensibles*/
     //GET - api/usuarios/{id}
     [AllowAnonymous]
-    [HttpGet("{id}")]
-    public async Task<IActionResult> ObtenerUsuarioPorId(int id)
+    [HttpGet("Runner/{id}")]
+    public async Task<IActionResult> ObtenerPerfilRunner(int id)
     {
-      //Buscar usuario por id (que estan activos)
+      // Buscar usuario por id (solo activos)
       var usuario = await _usuarioRepositorio.GetByIdAsync(id);
 
-      //Si no existe o esta eliminado
+      // Si no existe o esta eliminado
       if (usuario == null)
         return NotFound(new { message = "Usuario no encontrado" });
 
-      //Obtenermos el imgAvatar
-      var avatarUrl= _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
-      //Retornamos solo informacion publica
+      // Verificar que sea runner
+      if (usuario.TipoUsuario.ToLower() != "runner")
+        return BadRequest(new { message = "El usuario no es un runner" });
+
+      // Verificar que tenga perfil runner cargado
+      if (usuario.PerfilRunner == null)
+        return NotFound(new { message = "Perfil runner no encontrado" });
+
+      // Obtener URL completa del avatar
+      var avatarUrl = _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
+
+      // Calcular edad del runner
+      var edad = DateTime.Now.Year - usuario.PerfilRunner.FechaNacimiento.Year;
+      if (DateTime.Now < usuario.PerfilRunner.FechaNacimiento.AddYears(edad))
+        edad--;
+
+      // Retornar informacion publica del runner
       return Ok(new
       {
         idUsuario = usuario.IdUsuario,
-        nombre = usuario.Nombre,
-        apellido = usuario.Apellido,
+        nombre = usuario.PerfilRunner.Nombre,
+        apellido = usuario.PerfilRunner.Apellido,
         tipoUsuario = usuario.TipoUsuario,
-        localidad = usuario.Localidad,
-        agrupacion = usuario.Agrupacion,
-        imgAvatar= avatarUrl
+        localidad = usuario.PerfilRunner.Localidad,
+        agrupacion = usuario.PerfilRunner.Agrupacion,
+        edad = edad,
+        genero = usuario.PerfilRunner.Genero,
+        imgAvatar = avatarUrl
+        // Nota: No incluimos DNI, telefonos, email por privacidad
       });
     }
 
-    /*Obtiene el perfil público detallado de un Organizador 
+    /*Obtiene el perfil publico detallado de un Organizador 
       GET: api/Usuario/Organizador/{id}
       Incluye informacion de contacto para consultas sobre eventos*/
     [AllowAnonymous]
@@ -544,19 +630,20 @@ namespace RunnConnectAPI.Controllers
         return BadRequest(new { message = "El usuario no es un organizador" });
 
       //Obtenemos el imgAvatar
-      var avatarUrl= _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
+      var avatarUrl = _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
 
       // Retornar informacion publica del organizador
       return Ok(new
       {
         idUsuario = usuario.IdUsuario,
         nombre = usuario.Nombre,
-        apellido = usuario.Apellido,
+        razonSocial = usuario.PerfilOrganizador.RazonSocial,
+        nombreComercial = usuario.PerfilOrganizador.NombreComercial,
+        direccionLegal = usuario.PerfilOrganizador.DireccionLegal,
         tipoUsuario = usuario.TipoUsuario,
-        localidad = usuario.Localidad,
         telefono = usuario.Telefono, // Telefono publico para contacto
         email = usuario.Email, // Email publico para consultas
-        imgAvatar= avatarUrl    // Nota: No incluimos campos sensibles como passwordHash, estado, etc.
+        imgAvatar = avatarUrl    // Nota: No incluimos campos sensibles como passwordHash, estado, etc.
       });
     }
 
@@ -564,7 +651,7 @@ namespace RunnConnectAPI.Controllers
     //DELETE - /api/usuarios/perfil
     /*Quien puede eliminar usuarios?*/
     [Authorize] //Requiere estar autenticado
-    [HttpDelete("perfil")]
+    [HttpDelete("Perfil")]
     public async Task<IActionResult> EliminarCuenta()
     {
       //Obtenemos el id del usuario desde el token
@@ -581,9 +668,11 @@ namespace RunnConnectAPI.Controllers
         return NotFound(new { message = "Usuario no encontrado" });
 
       //Eliminamos avatar si existe y no es el por defecto
-      if (!string.IsNullOrEmpty(usuario.ImgAvatar)){
+      if (!string.IsNullOrEmpty(usuario.ImgAvatar))
+      {
         _fileService.EliminarAvatar(usuario.ImgAvatar);
-      };  
+      }
+      ;
 
       //Eliminado logico su estado pasa a falso
       await _usuarioRepositorio.DeleteLogicoAsync(usuario);
@@ -591,13 +680,13 @@ namespace RunnConnectAPI.Controllers
       return Ok(new { message = "Cuenta eliminada exitosamente" });
     }
 
-    /*Gestion de avatar usuario autenticado
+    /*Actualiza avatar usuario autenticado
     PUT: api/Usuario/Avatar
     Content-Type: multipart/form-data*/
     [Authorize]
     [HttpPut("Avatar")]
     public async Task<IActionResult> ActualizarAvatar([FromForm] IFormFile imagen)
-    { 
+    {
       //Validar que se envio una imagen
       if (imagen == null || imagen.Length == 0)
         return BadRequest(new { message = "Debe enviar una imagen" });
@@ -685,6 +774,29 @@ namespace RunnConnectAPI.Controllers
       {
         return BadRequest(new { message = ex.Message });
       }
+    }
+
+    /*Recuperar contraseña (envia email con token)
+      POST: api/Usuario/RecuperarPassword*/
+    [AllowAnonymous]
+    [HttpPost("RecuperarPassword")]
+    public async Task<IActionResult> RecuperarPassword([FromBody] RecuperarPasswordDto dto)
+    {
+      if (!ModelState.IsValid)
+        return BadRequest(ModelState);
+
+      // Buscar usuario por email
+      var usuario = await _usuarioRepositorio.GetByEmailAsync(dto.Email.ToLower());
+
+      // Por seguridad, siempre retornamos el mismo mensaje
+      var mensaje = "Si el email existe, recibiras un correo con instrucciones";
+
+      if (usuario != null)
+      {
+        //Implementar logica de envio de email
+      }
+
+      return Ok(new { message = mensaje });
     }
 
 

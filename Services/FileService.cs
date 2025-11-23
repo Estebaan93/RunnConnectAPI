@@ -90,6 +90,10 @@ namespace RunnConnectAPI.Services
         if(urlRelativa.StartsWith("http://") || urlRelativa.StartsWith("https://"))
           return false;
 
+        //No eliminar avatares por defecto
+        if(EsAvatarPorDefecto(urlRelativa))
+          return false;
+
         // Convertir URL relativa a ruta fisica
         var rutaFisica = Path.Combine(_environment.WebRootPath, urlRelativa.TrimStart('/'));
 

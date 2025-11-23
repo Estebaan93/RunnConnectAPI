@@ -68,6 +68,14 @@ namespace RunnConnectAPI.Repositories
       return perfil;
     }
 
+    /*Crear perfil organizador*/
+    public async Task<PerfilOrganizador>CreatePerfilOrganizadorAsync(PerfilOrganizador perfil)
+    {
+      _context.PerfilesOrganizadores.Add(perfil);
+      await _context.SaveChangesAsync();
+      return perfil;
+    }
+
     //Actualizar usuario
     public async Task UpdateAsync(Usuario usuario)
     {
