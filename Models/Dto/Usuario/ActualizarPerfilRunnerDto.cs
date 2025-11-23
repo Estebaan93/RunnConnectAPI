@@ -13,9 +13,9 @@ namespace RunnConnectAPI.Models.Dto.Usuario
     [StringLength(100, MinimumLength =3,ErrorMessage = "El nombre debe tener mas de 3 caracteres")]
     public string Nombre { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "El telefono es requerido")]
-    [Range(1000000, 999999999, ErrorMessage = "El telefono debe tener entre 7 y 9 dígitos")]
-    public int Telefono { get; set; }
+    [Required(ErrorMessage = "El telefono es obligatorio")]
+    [StringLength(20, MinimumLength = 7, ErrorMessage = "El telefono debe tener entre 7 y 20 digitos")]
+    public string Telefono { get; set; }= string.Empty;
 
 
     /*Campos tabla perfeiles_runners*/

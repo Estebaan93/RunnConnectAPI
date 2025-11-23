@@ -24,9 +24,9 @@ namespace RunnConnectAPI.Models
     public string Email { get; set; }
 
     [Required(ErrorMessage ="El telefono es requerido")]
-    [Range(1000000, 999999999, ErrorMessage = "El telefono debe tener entre 7 y 9 dígitos")]
+    [StringLength(20, MinimumLength = 7, ErrorMessage = "El telefono debe tener entre 7 y 20 caracteres")]
     [Column("telefono")]
-    public int Telefono { get; set; }
+    public string Telefono { get; set; }
 
     [Required]
     [JsonIgnore] //No exponer el hash de password en las respuestas

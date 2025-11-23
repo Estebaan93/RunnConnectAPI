@@ -1,6 +1,6 @@
 TOTAL 15
 http://localhost:5000/api/Usuario
-AUTENTICACIÓN (3)
+AUTENTICACION (3)
 1. POST /Login - Login unificado
   autorizacion: publico
   content-type: application/json
@@ -9,33 +9,55 @@ AUTENTICACIÓN (3)
     json
     {
       "email":"test@test.com",
-      "password":"12345"
+      "password":"123456"
     }
 
 2. POST /RegisterRunner - Registro de corredor
   autorizacion: publico
   content-type: multipart/form-data
+  request: token bearer para login automatico
   Form Data:
-    nombre: Juan
-    apellido: Pérez
-    email: juan@example.com
-    password: 123456
-    confirmPassword: 123456
-    dni: 12345678
-    telefono: 2664123456
-    fechaNacimiento: 1990-01-01        [OPCIONAL]
-    genero: M                          [OPCIONAL: F, M, X]
-    localidad: San Luis                [OPCIONAL]
-    agrupacion: Running Team SL        [OPCIONAL]
-    telefonoEmergencia: 2664987654     [OPCIONAL]
-    imgAvatar: [archivo.jpg]           [OPCIONAL: max 20MB]
+    Nombre: Juan
+    Apellido: Pérez
+    Email: juan@example.com
+    Password: 123456
+    ConfirmPassword: 123456
+    Telefono: 2664123456
+    Dni: 12345678
+    FechaNacimiento: 1990-01-01        
+    Genero: M                          [ F, M, X]
+    Localidad: San Luis                
+    Agrupacion: Running Team SL        
+    TelefonoEmergencia: 2664987654     
+    imgAvatar: [archivo.jpg]           [OPCIONAL: max 20MB - default si no se carga]
   
 3. POST /RegisterOrganizador - Registro de organizador
+  autorizacion: publico
+  content-type: multipart/form-data
+  request: token bearer para login automatico
+  Form Data:
+    Nombre: Juan Carlos
+    Email: eventos@runnersclub.com
+    Password: 123456
+    ConfirmPassword: 123456
+    Telefono: 2664111113
+    RazonSocial: Runners Club San Luis S.Actualizar
+    NombreComercial: Runners Club SL
+    CuitTaxid: 30-12345678-9
+    DireccionLegal: Av Illia 435, San Luis
+    imgAvatar: [archivo.png, jpg]     [OPCIONAL: max 20MB - default si no se carga]
+
+
+PUBLICO (2)
+1. GET /Organizador/{id} - Endpoint publico para ver perfil de un organizador - no requiere autenticacion
+2. GET /Runner/{id} - Endpoint publico para ver perfil de un runner - no requiere autenticacion
+
 
 GESTION DE PERFIL (3)
-GET /Perfil - Ver perfil propio
-PUT /ActualizarPerfilRunner - Actualizar perfil corredor
-PUT /ActualizarPerfilOrganizador - Actualizar perfil organizador
+1. GET /Perfil - Ver perfil propio - requiere token bearer como autenticacion- valido para runner/organizador
+
+2. PUT /ActualizarPerfilRunner - Actualizar perfil corredor
+3. PUT /ActualizarPerfilOrganizador - Actualizar perfil organizador
 
 GESTION DE CONTRASEÑA (1)
 PUT /CambiarPassword - Cambiar contraseña

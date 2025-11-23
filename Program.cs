@@ -76,6 +76,9 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+//Habilitar archivos estaticos
+
+
 // Configure the HTTP request pipeline (El orden importa).
 if (app.Environment.IsDevelopment())
 {
@@ -84,6 +87,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 
 //Aplicar politicas de CORS
 app.UseCors("AllowAllPolicy");

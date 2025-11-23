@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 23-11-2025 a las 00:26:57
+-- Tiempo de generación: 23-11-2025 a las 12:13:04
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -124,6 +124,13 @@ CREATE TABLE `perfiles_runners` (
   `telefonoEmergencia` varchar(50) NOT NULL COMMENT 'Contacto de emergencia'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Volcado de datos para la tabla `perfiles_runners`
+--
+
+INSERT INTO `perfiles_runners` (`idPerfilRunner`, `idUsuario`, `nombre`, `apellido`, `fechaNacimiento`, `genero`, `dni`, `localidad`, `agrupacion`, `telefonoEmergencia`) VALUES
+(2, 2, 'Carlos', 'Gonzalez', '1990-03-20 00:00:00', 'M', 11111111, 'San Luis', 'Libre', '2664111112');
+
 -- --------------------------------------------------------
 
 --
@@ -184,12 +191,19 @@ CREATE TABLE `usuarios` (
   `idUsuario` int(11) NOT NULL,
   `nombre` varchar(100) NOT NULL COMMENT 'Nombre de Pila (Runner) o Nombre Comercial (Organizador)',
   `email` varchar(100) NOT NULL,
-  `telefono` int(11) NOT NULL COMMENT 'Numero de celu',
+  `telefono` varchar(20) NOT NULL COMMENT 'Numero de celu',
   `passwordHash` varchar(255) NOT NULL,
   `tipoUsuario` enum('runner','organizador') NOT NULL,
   `estado` tinyint(1) NOT NULL DEFAULT 1 COMMENT '0 false, 1 true (Al crear) sera de estado true',
   `imgAvatar` varchar(500) DEFAULT NULL COMMENT 'URL o ruta del avatar del usuario'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `usuarios`
+--
+
+INSERT INTO `usuarios` (`idUsuario`, `nombre`, `email`, `telefono`, `passwordHash`, `tipoUsuario`, `estado`, `imgAvatar`) VALUES
+(2, 'Carlos', 'carlos@test.com', '2664111111', '$2a$12$1eEF/knMNucRBPUTHbWD1Ortnqnafy4rIlyGPrDSAKe10NIAKaRri', 'runner', 1, '/uploads/avatars/defaults/default_runner.png');
 
 --
 -- Índices para tablas volcadas
@@ -308,7 +322,7 @@ ALTER TABLE `perfiles_organizadores`
 -- AUTO_INCREMENT de la tabla `perfiles_runners`
 --
 ALTER TABLE `perfiles_runners`
-  MODIFY `idPerfilRunner` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `idPerfilRunner` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `puntosinteres`
@@ -332,7 +346,7 @@ ALTER TABLE `rutas`
 -- AUTO_INCREMENT de la tabla `usuarios`
 --
 ALTER TABLE `usuarios`
-  MODIFY `idUsuario` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `idUsuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- Restricciones para tablas volcadas

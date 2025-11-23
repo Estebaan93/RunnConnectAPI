@@ -26,8 +26,8 @@ namespace RunnConnectAPI.Models.Dto.Usuario
     public string ConfirmPassword { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "El telefono es obligatorio")]
-    [Range(1000000, 999999999, ErrorMessage = "El telefono debe tener entre 7 y 9 digitos")]
-    public int Telefono { get; set; }
+    [StringLength(20, MinimumLength = 7, ErrorMessage = "El telefono debe tener entre 7 y 20 digitos")]
+    public string Telefono { get; set; }= string.Empty;
 
 
     /*Campos tabla perfiles_runners*/

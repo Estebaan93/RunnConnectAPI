@@ -685,11 +685,11 @@ namespace RunnConnectAPI.Controllers
     Content-Type: multipart/form-data*/
     [Authorize]
     [HttpPut("Avatar")]
-    public async Task<IActionResult> ActualizarAvatar([FromForm] IFormFile imagen)
-    {
-      //Validar que se envio una imagen
-      if (imagen == null || imagen.Length == 0)
-        return BadRequest(new { message = "Debe enviar una imagen" });
+    public async Task<IActionResult> ActualizarAvatar([FromForm] SubirAvatarDto dto)
+{
+      // Validar modelo usando el DTO
+      if (!ModelState.IsValid || dto.Imagen == null || dto.Imagen.Length == 0)
+        return BadRequest(new { message = "Debe enviar una imagen válida" });
 
       //Obtener Id del usuario desde el token
       var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -711,8 +711,8 @@ namespace RunnConnectAPI.Controllers
           _fileService.EliminarAvatar(usuario.ImgAvatar);
         }
 
-        // Guardar nuevo avatar
-        var urlAvatar = await _fileService.GuardarAvatarAsync(imagen, userId);
+        // Guardar nuevo avatar (usando dto.Imagen)
+        var urlAvatar = await _fileService.GuardarAvatarAsync(dto.Imagen, userId); // <--- USANDO dto.Imagen
         usuario.ImgAvatar = urlAvatar;
         await _usuarioRepositorio.UpdateAsync(usuario);
 
