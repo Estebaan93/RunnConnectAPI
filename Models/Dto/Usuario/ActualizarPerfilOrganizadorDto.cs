@@ -5,7 +5,8 @@ namespace RunnConnectAPI.Models.Dto.Usuario
 {
 
   /*DTO para actualizar perfil de Organizador - actualiza campos en usuarios + perfiles_organizadoes
-  El avatar se actualiza con el endpoint separado PUT /api/Usuarios/Avatar*/
+  El avatar se actualiza con el endpoint separado PUT /api/Usuarios/Avatar
+  Todos los campos son requeridos para poder crear eventos*/
   
   public class ActualizarPerfilOrganizadorDto
   {
@@ -27,6 +28,11 @@ namespace RunnConnectAPI.Models.Dto.Usuario
     [Required(ErrorMessage ="El nombre comercial es obligatorio")]
     [StringLength(100, ErrorMessage = "El nombre comercial no puede exceder 100 caracteres")]
     public string NombreComercial { get; set; }=string.Empty;
+
+    [Required(ErrorMessage = "El CUIT es obligatorio")]
+    [StringLength(30, MinimumLength = 11, ErrorMessage = "El CUIT debe tener entre 11 y 30 caracteres")]
+    [RegularExpression(@"^\d{2}-\d{8}-\d{1}$|^\d{11}$", ErrorMessage = "El CUIT debe tener formato XX-XXXXXXXX-X o 11 digitos")]
+    public string CuitTaxId { get; set; } = string.Empty;    
 
     [Required(ErrorMessage ="La direccion es obligatoria")]
     [StringLength(255, ErrorMessage = "La dirección legal no puede exceder 255 caracteres")]

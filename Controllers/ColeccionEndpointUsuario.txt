@@ -1,6 +1,31 @@
 TOTAL 15
 http://localhost:5000/api/Usuario
-AUTENTICACION (3)
+RESGISTRO (2):
+1. POST /RegisterRunner - Registro de corredor simple - Para INSCRIBIRSE a eventos su perfil dede estar completo
+  autorizacion: publico
+  content-type: multipart/form-data
+  request: token bearer para login automatico
+  Form Data:
+    Nombre: Juan
+    Apellido: Pérez
+    Email: juan@example.com
+    Password: 123456
+    ConfirmPassword: 123456  
+    imgAvatar: [archivo.jpg]           [OPCIONAL: max 20MB - default si no se carga]
+  
+2. POST /RegisterOrganizador - Registro de organizador simple - Para CREAR eventos su perfil debe estar completo
+  autorizacion: publico
+  content-type: multipart/form-data
+  request: token bearer para login automatico
+  Form Data:
+    NombreComercial: Juan Carlos
+    Email: eventos@runnersclub.com
+    Password: 123456
+    ConfirmPassword: 123456
+    RazonSocial: Runners Club San Luis S.A
+    imgAvatar: [archivo.png, jpg]     [OPCIONAL: max 20MB - default si no se carga]
+
+AUTENTICACION (1)
 1. POST /Login - Login unificado
   autorizacion: publico
   content-type: application/json
@@ -12,59 +37,73 @@ AUTENTICACION (3)
       "password":"123456"
     }
 
-2. POST /RegisterRunner - Registro de corredor
-  autorizacion: publico
-  content-type: multipart/form-data
-  request: token bearer para login automatico
-  Form Data:
-    Nombre: Juan
-    Apellido: Pérez
-    Email: juan@example.com
-    Password: 123456
-    ConfirmPassword: 123456
-    Telefono: 2664123456
-    Dni: 12345678
-    FechaNacimiento: 1990-01-01        
-    Genero: M                          [ F, M, X]
-    Localidad: San Luis                
-    Agrupacion: Running Team SL        
-    TelefonoEmergencia: 2664987654     
-    imgAvatar: [archivo.jpg]           [OPCIONAL: max 20MB - default si no se carga]
-  
-3. POST /RegisterOrganizador - Registro de organizador
-  autorizacion: publico
-  content-type: multipart/form-data
-  request: token bearer para login automatico
-  Form Data:
-    Nombre: Juan Carlos
-    Email: eventos@runnersclub.com
-    Password: 123456
-    ConfirmPassword: 123456
-    Telefono: 2664111113
-    RazonSocial: Runners Club San Luis S.Actualizar
-    NombreComercial: Runners Club SL
-    CuitTaxid: 30-12345678-9
-    DireccionLegal: Av Illia 435, San Luis
-    imgAvatar: [archivo.png, jpg]     [OPCIONAL: max 20MB - default si no se carga]
-
-
 PUBLICO (2)
 1. GET /Organizador/{id} - Endpoint publico para ver perfil de un organizador - no requiere autenticacion
 2. GET /Runner/{id} - Endpoint publico para ver perfil de un runner - no requiere autenticacion
 
-
 GESTION DE PERFIL (3)
 1. GET /Perfil - Ver perfil propio - requiere token bearer como autenticacion- valido para runner/organizador
 
-2. PUT /ActualizarPerfilRunner - Actualizar perfil corredor
+2. PUT /ActualizarPerfilRunner - Actualizar perfil corredor 
+   autorizacion: token bearer
+   content-type: application/json
+   body:
+    json
+      {
+        "nombre": "Carlos Augusto",
+        "apellido": "González Pérez",
+        "telefono": "2664222333",
+        "fechaNacimiento": "1990-03-20", // Al menos 14 años
+        "genero": "M",
+        "dni":"22222222",
+        "localidad": "Juana Koslay",
+        "agrupacion": "Equipo Trail Running SL" / "Libre si no tiene agrupacion",
+        "nombreContactoEmergencia":"Pareja",
+        "telefonoEmergencia": "2664888999"   
+      }
+   
 3. PUT /ActualizarPerfilOrganizador - Actualizar perfil organizador
-
-GESTION DE CONTRASEÑA (1)
-PUT /CambiarPassword - Cambiar contraseña
+  autenticacion: token bearer
+  content-type: application/json
+  body:
+    json
+    {
+      "nombre": "CD La Punta",
+      "telefono": "2664555888",
+      "razonSocial": "Club Deportivo La Punta",
+      "nombreComercial": "CD La Punta",
+      "cuitTaxid": "20-55667788-3",
+      "direccionLegal": "Av. Costanera s/n, La Punta, San Luis"
+    }
 
 GESTION DE AVATAR (2)
-PUT /Avatar - Subir/cambiar avatar
-DELETE /Avatar - Restaurar avatar por defecto
+1. PUT /Avatar - Subir/cambiar avatar - Aplica a ambos perfiles runner/organizador
+  autenticacion: token bearer
+  content-type: multipart/form-data
+  form:
+    Imagen: [archivo imagen] - hasta 20 MB - ".jpg", ".jpeg", ".png", ".gif", ".webp"
+
+
+2. DELETE /Avatar - Restaurar avatar por defecto - Eliminar el avatarImg
+  autenticacion: token bearer
+  content-type:
+
+
+GESTION DE CONTRASEÑA (2)
+1. PUT /CambiarPassword - Cambiar contraseña - 
+    autenticacion: token bearer
+    content-type: application/json
+    body:
+      json
+      {
+        "PasswordActual": "123456", 
+        "NuevaPassword": "nuevapass123", - Mayor a 6 caracteres
+        "ConfirmarPassword": "nuevapass123" - Mayor a 6 caracteres
+      }
+
+2. PUT / RecuperarPassword - Recuperamos el Password
+
+
 
 VERIFICACIONES PUBLICAS (2)
 GET /VerificarEmail - Verificar disponibilidad email

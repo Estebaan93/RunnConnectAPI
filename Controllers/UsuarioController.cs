@@ -34,7 +34,9 @@ namespace RunnConnectAPI.Controllers
     [HttpPost("Login")]
     public async Task<IActionResult> Login([FromBody] LoginRequestDto loginRequestDto)
     {
-      //Validamos el modelo DataAnnotations
+      try
+      {      
+       //Validamos el modelo DataAnnotations
       if (!ModelState.IsValid)
         return BadRequest(ModelState);
 
@@ -62,410 +64,450 @@ namespace RunnConnectAPI.Controllers
           imgAvatar = avatarUrl
         }
       });
+      }
+      catch (Exception ex)
+      {
+        return StatusCode(500, new { message = "Error en el login", error = ex.Message });
+      }
     }
 
     /*Registro de nuevo usuarios RUNNERs (avatar opcional) y retorna un JWT para login automatico
     POST: api/usuarios/RegisterRunner
     Content-type: multipart/form-data
-    Si no se envia imgAvatar se asigna uno default_runner.png*/
+    Si no se envia imgAvatar se asigna uno default_runner.png
+    nombre, apellido, email, password*/
     [AllowAnonymous]
     [HttpPost("RegisterRunner")]
+    [Consumes("multipart/form-data")]
     public async Task<IActionResult> Register([FromForm] RegisterRunnerDto dto)
     {
-      if (!ModelState.IsValid)
-        return BadRequest(ModelState);
-
-      // Validaciones
-      if (await _usuarioRepositorio.EmailExistenteAsync(dto.Email))
-        return Conflict(new { message = "El email ya esta registrado" });
-
-      if (await _usuarioRepositorio.DniExisteAsync(dto.Dni))
-        return Conflict(new { message = "El DNI ya esta registrado" });
-
-      //Validamos la edad minima
-      var edad = DateTime.Today.Year - dto.FechaNacimiento.Year;
-      if (dto.FechaNacimiento.Date > DateTime.Today.AddYears(-edad))
-        edad--;
-
-      if (edad < 14)
-        return BadRequest(new { message = "Debes tener al menos 14 años para registrarte" });
-
-      if (dto.FechaNacimiento > DateTime.Today)
-        return BadRequest(new { message = "La fecha de nacimiento no puede ser futura" });
-
-
-      //Normalizamos genero
-      var generoNormalizado = dto.Genero.ToUpper().Trim();
-
-      // Crear usuario en la tabla usuarios (sin avatar todavia)
-      var usuario = new Usuario
-      {
-        Nombre = dto.Nombre.Trim(),
-        Email = dto.Email.ToLower(),
-        PasswordHash = _passwordService.HashPassword(dto.Password),
-        Telefono = dto.Telefono,
-        TipoUsuario = "runner",
-        Estado = true
-      };
-
-      // Guardar usuario primero para obtener el ID
-      await _usuarioRepositorio.CreateAsync(usuario);
-
-      /*Crear perfil runner en la tabla perfiles_runners*/
-      var perfilRunner = new PerfilRunner
-      {
-        IdUsuario = usuario.IdUsuario,
-        Nombre = dto.Nombre.Trim(),
-        Apellido = dto.Apellido.Trim(),
-        Dni = dto.Dni,
-        FechaNacimiento = dto.FechaNacimiento,
-        Genero = generoNormalizado,
-        Localidad = dto.Localidad?.Trim(),
-        Agrupacion = dto.Agrupacion?.Trim(),
-        TelefonoEmergencia = dto.TelefonoEmergencia.Trim()
-      };
-
-      await _usuarioRepositorio.CreatePerfilRunnerAsync(perfilRunner);
-
-      // Gestionar avatar (opcional)
       try
       {
-        var avatarUrl = await _fileService.GuardarAvatarRegistroAsync(
-            dto.ImgAvatar,
-            usuario.IdUsuario,
-            "runner"
+        //Validar que el email no exista
+        if (await _usuarioRepositorio.EmailExistenteAsync(dto.Email.Trim().ToLower()))
+          return BadRequest(new { message = "El email ya esta registrado" });
+
+        //Crear usuario base
+        var usuario = new Models.Usuario
+        {
+          Nombre = dto.Nombre.Trim(),
+          Email = dto.Email.Trim().ToLower(),
+          Telefono = null, // Se completa despues
+          PasswordHash = _passwordService.HashPassword(dto.Password),
+          TipoUsuario = "runner",
+          Estado = true
+        };
+
+        //Guardar avatar (o asignar default)
+        usuario.ImgAvatar = await _fileService.GuardarAvatarRegistroAsync(
+          dto.ImgAvatar,
+          0, // El ID se asigna despues de guardar
+          "runner"
         );
 
-        usuario.ImgAvatar = avatarUrl;
-        await _usuarioRepositorio.UpdateAsync(usuario);
+        //Crear perfil runner con datos basicos
+        var perfilRunner = new PerfilRunner
+        {
+          Nombre = dto.Nombre.Trim(),
+          Apellido = dto.Apellido.Trim(),
+          // Todos los demas campos quedan NULL hasta que el usuario los complete
+          FechaNacimiento = null,
+          Genero = null,
+          Dni = null,
+          Localidad = null,
+          Agrupacion = null,
+          NombreContactoEmergencia = null,
+          TelefonoEmergencia = null
+        };
+
+        usuario.PerfilRunner = perfilRunner;
+
+        //Guardar en BD
+        await _usuarioRepositorio.CreateAsync(usuario);
+
+        //Si se subio un avatar temporal, renombrarlo con el ID real
+        if (dto.ImgAvatar != null && dto.ImgAvatar.Length > 0)
+        {
+          usuario.ImgAvatar = await _fileService.GuardarAvatarAsync(dto.ImgAvatar, usuario.IdUsuario);
+          await _usuarioRepositorio.UpdateAsync(usuario);
+        }
+
+        //Generar token JWT
+        var token = _jwtService.GenerarToken(usuario);
+
+        //Obtener URL completa del avatar
+        var avatarUrl = _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
+
+        //Verificar si el perfil esta completo
+        bool perfilCompleto = !string.IsNullOrEmpty(usuario.Telefono) &&
+                              perfilRunner.FechaNacimiento.HasValue &&
+                              !string.IsNullOrEmpty(perfilRunner.Genero) &&
+                              perfilRunner.Dni.HasValue &&
+                              !string.IsNullOrEmpty(perfilRunner.Localidad) &&
+                              !string.IsNullOrEmpty(perfilRunner.Agrupacion) &&
+                              !string.IsNullOrEmpty(perfilRunner.NombreContactoEmergencia) &&
+                              !string.IsNullOrEmpty(perfilRunner.TelefonoEmergencia);
+
+        //Retornar respuesta
+        return Ok(new
+        {
+          message = perfilCompleto
+            ? "Runner registrado exitosamente"
+            : "Runner registrado exitosamente. Completa tu perfil para inscribirte a eventos",
+          token = token,
+          usuario = new
+          {
+            idUsuario = usuario.IdUsuario,
+            nombre = usuario.Nombre,
+            email = usuario.Email,
+            tipoUsuario = usuario.TipoUsuario,
+            imgAvatar = avatarUrl,
+            perfilCompleto = perfilCompleto
+          }
+        });
       }
       catch (Exception ex)
       {
-        // Si falla la subida, asignar avatar por defecto
-        Console.Write(ex.Message);
-        usuario.ImgAvatar = _fileService.ObtenerAvatarPorDefecto("runner");
-        await _usuarioRepositorio.UpdateAsync(usuario);
+        return StatusCode(500, new { message = "Error al registrar runner", error = ex.Message });
       }
-
-      //Generar y obtener el token
-      var token = _jwtService.GenerarToken(usuario);
-      var avatarUrlCompleta = _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
-
-      return Ok(new
-      {
-        message = "Runner registrado exitosamente",
-        token,
-        usuario = new
-        {
-          idUsuario = usuario.IdUsuario,
-          nombre = perfilRunner.Nombre,
-          apellido = perfilRunner.Apellido,
-          email = usuario.Email,
-          tipoUsuario = usuario.TipoUsuario,
-          imgAvatar = avatarUrlCompleta
-        }
-      });
     }
 
 
     /*Registro de nuevos ORGANIZADORES (imgAvatar opcional) y retorna el token
     POST_ api/usuario/RegisterOrganizador 
     Content-type: multipart/form-data
-    Si no se envia imgAvatar se asigna uno por defecto default_organization.png*/
+    Si no se envia imgAvatar se asigna uno por defecto default_organization.png
+    razonSocial, nombreComercial, email, password*/
     [AllowAnonymous]
     [HttpPost("RegisterOrganizador")]
+    [Consumes("multipart/form-data")]
     public async Task<IActionResult> RegisterOrganizador([FromForm] RegisterOrganizadorDto dto)
     {
-      if (!ModelState.IsValid)
-        return BadRequest(ModelState);
-
-      // Validaciones email unico
-      if (await _usuarioRepositorio.EmailExistenteAsync(dto.Email.Trim().ToLower()))
-        return Conflict(new { message = "El email ya esta registrado" });
-
-      if (await _usuarioRepositorio.CuitExisteAsync(dto.CuitTaxId.Trim()))
-        return Conflict(new { message = "El CUIT ya esta registrado" });
-
-      // Crear usuario en la tabla usuarios(sin avatar todavía)
-      var usuario = new Usuario
-      {
-        Nombre = dto.Nombre.Trim(),
-        Email = dto.Email.Trim().ToLower(),
-        PasswordHash = _passwordService.HashPassword(dto.Password),
-        Telefono = dto.Telefono,
-        TipoUsuario = "organizador",
-        Estado = true
-      };
-
-      // Guardar usuario primero para obtener el ID
-      await _usuarioRepositorio.CreateAsync(usuario);
-
-      //Crear perfil organizador en la tabla  perfiles_organizadores
-      var PerfilOrganizador = new PerfilOrganizador
-      {
-        IdUsuario = usuario.IdUsuario,
-        RazonSocial = dto.RazonSocial,
-        NombreComercial = dto.NombreComercial.Trim(),
-        CuitTaxId = dto.CuitTaxId.Trim(),
-        DireccionLegal = dto.DireccionLegal.Trim()
-      };
-
-      await _usuarioRepositorio.CreatePerfilOrganizadorAsync(PerfilOrganizador);
-
-      // Gestionar avatar (opcional)
       try
       {
-        var avatarUrl = await _fileService.GuardarAvatarRegistroAsync(
-            dto.ImgAvatar,
-            usuario.IdUsuario,
-            "organizador"
+        //Validar que el email no exista
+        if (await _usuarioRepositorio.EmailExistenteAsync(dto.Email.Trim().ToLower()))
+          return BadRequest(new { message = "El email ya esta registrado" });
+
+        //Crear usuario base
+        var usuario = new Models.Usuario
+        {
+          Nombre = dto.NombreComercial.Trim(),
+          Email = dto.Email.Trim().ToLower(),
+          Telefono = null, // Se completa despues
+          PasswordHash = _passwordService.HashPassword(dto.Password),
+          TipoUsuario = "organizador",
+          Estado = true
+        };
+
+        //Guardar avatar (o asignar default)
+        usuario.ImgAvatar = await _fileService.GuardarAvatarRegistroAsync(
+          dto.ImgAvatar,
+          0, // El ID se asigna despues de guardar
+          "organizador"
         );
 
-        usuario.ImgAvatar = avatarUrl;
-        await _usuarioRepositorio.UpdateAsync(usuario);
+        //Crear perfil organizador con datos basicos
+        var perfilOrganizador = new PerfilOrganizador
+        {
+          RazonSocial = dto.RazonSocial.Trim(),
+          NombreComercial = dto.NombreComercial.Trim(),
+          // Estos campos quedan NULL hasta que el usuario los complete
+          CuitTaxId = null,
+          DireccionLegal = null
+        };
+
+        usuario.PerfilOrganizador = perfilOrganizador;
+
+        //Guardar en BD
+        await _usuarioRepositorio.CreateAsync(usuario);
+
+        //Si se subio un avatar temporal, renombrarlo con el ID real
+        if (dto.ImgAvatar != null && dto.ImgAvatar.Length > 0)
+        {
+          usuario.ImgAvatar = await _fileService.GuardarAvatarAsync(dto.ImgAvatar, usuario.IdUsuario);
+          await _usuarioRepositorio.UpdateAsync(usuario);
+        }
+
+        //Generar token JWT
+        var token = _jwtService.GenerarToken(usuario);
+
+        //Obtener URL completa del avatar
+        var avatarUrl = _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
+
+        //Verificar si el perfil esta completo
+        bool perfilCompleto = !string.IsNullOrEmpty(usuario.Telefono) &&
+                              !string.IsNullOrEmpty(perfilOrganizador.CuitTaxId) &&
+                              !string.IsNullOrEmpty(perfilOrganizador.DireccionLegal);
+
+        //Retornar respuesta
+        return Ok(new
+        {
+          message = perfilCompleto
+            ? "Organizador registrado exitosamente"
+            : "Organizador registrado exitosamente. Completa tu perfil para crear eventos",
+          token = token,
+          usuario = new
+          {
+            idUsuario = usuario.IdUsuario,
+            nombre = usuario.Nombre,
+            email = usuario.Email,
+            tipoUsuario = usuario.TipoUsuario,
+            imgAvatar = avatarUrl,
+            perfilCompleto = perfilCompleto
+          }
+        });
       }
       catch (Exception ex)
       {
-        // Si falla la subida, asignar avatar por defecto
-        Console.Write(ex.Message);
-        usuario.ImgAvatar = _fileService.ObtenerAvatarPorDefecto("organizador");
-        await _usuarioRepositorio.UpdateAsync(usuario);
+        return StatusCode(500, new { message = "Error al registrar organizador", error = ex.Message });
       }
 
-      //Generar y obtener token
-      var token = _jwtService.GenerarToken(usuario);
-      var avatarUrlCompleta = _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
-
-      return Ok(new
-      {
-        message = "Organizador registrado exitosamente",
-        token,
-        usuario = new
-        {
-          idUsuario = usuario.IdUsuario,
-          nombre = usuario.Nombre,
-          RazonSocial = PerfilOrganizador.RazonSocial,
-          email = usuario.Email,
-          tipoUsuario = usuario.TipoUsuario,
-          imgAvatar = avatarUrlCompleta
-        }
-      });
     }
 
-
+    /*OBTENER MI PERFIL COMPLETO (PRIVADO)
+    Retorna todos los datos del usuario autenticado, incluyendo datos sensibles
+    Incluye flag perfilCompleto para saber si puede inscribirse a eventos o crear eventos*/
     /*GET- Obtener perfil del usuario autenticado
     GET: api/Usuario/Perfil*/
     [HttpGet("perfil")]
     public async Task<IActionResult> ObtenerPerfil()
     {
-      //Obtenemos el Id del usuario desde el token JWT
-      var userClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-      if (userClaim == null)
-        return Unauthorized(new { message = "No autorizado" });
-
-      var userId = int.Parse(userClaim.Value);
-
-      //Buscamos el usuario en la BD (Solo los activos)
-      var usuario = await _usuarioRepositorio.GetByIdAsync(userId);
-
-      if (usuario == null)
-        return NotFound(new { message = "Usuario no encontrado" });
-
-      //Obtenemos el imgAvatar
-      var avatarUrl = _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
-
-      //Mapeamos a obj anonimo (sin Pass ni Estado)
-      if (usuario.TipoUsuario == "runner" && usuario.PerfilRunner != null)
+      try
       {
-        return Ok(new
+        // Obtenemos el Id del usuario desde el token JWT
+        var userClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userClaim == null)
+          return Unauthorized(new { message = "No autorizado" });
+
+        var userId = int.Parse(userClaim.Value);
+
+        // Buscamos el usuario en la BD (Solo los activos)
+        var usuario = await _usuarioRepositorio.GetByIdAsync(userId);
+
+        if (usuario == null)
+          return NotFound(new { message = "Usuario no encontrado" });
+
+        // Obtenemos el imgAvatar
+        var avatarUrl = _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
+
+        // RUNNER
+        if (usuario.TipoUsuario == "runner" && usuario.PerfilRunner != null)
         {
-          idUsuario = usuario.IdUsuario,
-          nombre = usuario.Nombre,
-          apellido = usuario.PerfilRunner.Apellido,
-          email = usuario.Email,
-          telefono = usuario.Telefono,
-          tipoUsuario = usuario.TipoUsuario,
-          fechaNacimiento = usuario.PerfilRunner.FechaNacimiento,
-          genero = usuario.PerfilRunner.Genero,
-          dni = usuario.PerfilRunner.Dni,
-          localidad = usuario.PerfilRunner.Localidad,
-          agrupacion = usuario.PerfilRunner.Agrupacion,
-          telefonoEmergencia = usuario.PerfilRunner.TelefonoEmergencia,
-          imgAvatar = avatarUrl,
-          esAvatarPorDefecto = _fileService.EsAvatarPorDefecto(usuario.ImgAvatar),
-          estado = usuario.Estado
-        });
+          // Verificar si el perfil esta completo (para poder inscribirse a eventos)
+          bool perfilCompleto = !string.IsNullOrEmpty(usuario.Telefono) &&
+                                usuario.PerfilRunner.FechaNacimiento.HasValue &&
+                                !string.IsNullOrEmpty(usuario.PerfilRunner.Genero) &&
+                                usuario.PerfilRunner.Dni.HasValue &&
+                                !string.IsNullOrEmpty(usuario.PerfilRunner.Localidad) &&
+                                !string.IsNullOrEmpty(usuario.PerfilRunner.Agrupacion) &&
+                                !string.IsNullOrEmpty(usuario.PerfilRunner.NombreContactoEmergencia) &&
+                                !string.IsNullOrEmpty(usuario.PerfilRunner.TelefonoEmergencia);
+
+          return Ok(new
+          {
+            idUsuario = usuario.IdUsuario,
+            nombre = usuario.Nombre,
+            apellido = usuario.PerfilRunner.Apellido,
+            email = usuario.Email,
+            telefono = usuario.Telefono,
+            tipoUsuario = usuario.TipoUsuario,
+            fechaNacimiento = usuario.PerfilRunner.FechaNacimiento,
+            genero = usuario.PerfilRunner.Genero,
+            dni = usuario.PerfilRunner.Dni,
+            localidad = usuario.PerfilRunner.Localidad,
+            agrupacion = usuario.PerfilRunner.Agrupacion,
+            nombreContactoEmergencia = usuario.PerfilRunner.NombreContactoEmergencia,
+            telefonoEmergencia = usuario.PerfilRunner.TelefonoEmergencia,
+            imgAvatar = avatarUrl,
+            esAvatarPorDefecto = _fileService.EsAvatarPorDefecto(usuario.ImgAvatar),
+            estado = usuario.Estado,
+            perfilCompleto = perfilCompleto  // ← FLAG AGREGADO
+          });
+        }
+        // ORGANIZADOR
+        else if (usuario.TipoUsuario == "organizador" && usuario.PerfilOrganizador != null)
+        {
+          // Verificar si el perfil esta completo (para poder crear eventos)
+          bool perfilCompleto = !string.IsNullOrEmpty(usuario.Telefono) &&
+                                !string.IsNullOrEmpty(usuario.PerfilOrganizador.CuitTaxId) &&
+                                !string.IsNullOrEmpty(usuario.PerfilOrganizador.DireccionLegal);
+
+          return Ok(new
+          {
+            idUsuario = usuario.IdUsuario,
+            nombre = usuario.Nombre,
+            razonSocial = usuario.PerfilOrganizador.RazonSocial,
+            nombreComercial = usuario.PerfilOrganizador.NombreComercial,
+            cuit = usuario.PerfilOrganizador.CuitTaxId,
+            direccionLegal = usuario.PerfilOrganizador.DireccionLegal,
+            email = usuario.Email,
+            telefono = usuario.Telefono,
+            tipoUsuario = usuario.TipoUsuario,
+            imgAvatar = avatarUrl,
+            esAvatarPorDefecto = _fileService.EsAvatarPorDefecto(usuario.ImgAvatar),
+            estado = usuario.Estado,
+            perfilCompleto = perfilCompleto  // ← FLAG AGREGADO
+          });
+        }
+
+        return BadRequest(new { message = "Perfil incompleto" });
       }
-      else if (usuario.TipoUsuario == "organizador" && usuario.PerfilOrganizador != null)
+      catch (Exception ex)
       {
-        return Ok(new
-        {
-          idUsuario = usuario.IdUsuario,
-          nombre = usuario.Nombre,
-          razonSocial = usuario.PerfilOrganizador.RazonSocial,
-          nombreComercial = usuario.PerfilOrganizador.NombreComercial,
-          cuit = usuario.PerfilOrganizador.CuitTaxId,
-          direccionLegal = usuario.PerfilOrganizador.DireccionLegal,
-          email = usuario.Email,
-          telefono = usuario.Telefono,
-          tipoUsuario = usuario.TipoUsuario,
-          imgAvatar = avatarUrl,
-          esAvatarPorDefecto = _fileService.EsAvatarPorDefecto(usuario.ImgAvatar),
-          estado = usuario.Estado
-        });
+        return StatusCode(500, new { message = "Error al obtener perfil", error = ex.Message });
       }
-      return BadRequest(new { message = "Perfil incompleto" });
     }
 
 
     /*actualizar perfil de un usuario RUNNER - Actualiza usuarios + perfiles_runners
+    Requerido todos los campos antes de inscribirse a evento
     PUT: api/Usuario/ActualizarPerfilRunner
     Content-Type: application/json*/
     [HttpPut("ActualizarPerfilRunner")]
     public async Task<IActionResult> ActualizarPerfilRunner([FromBody] ActualizarPerfilRunnerDto dto)
     {
-      // Validar modelo
-      if (!ModelState.IsValid)
-        return BadRequest(ModelState);
-
-      // Obtener ID del usuario desde el token
-      var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-      if (userIdClaim == null)
-        return Unauthorized(new { message = "No autorizado" });
-
-      var userId = int.Parse(userIdClaim.Value);
-
-      // Buscar usuario en la BD
-      var usuario = await _usuarioRepositorio.GetByIdAsync(userId);
-
-      if (usuario == null)
-        return NotFound(new { message = "Usuario no encontrado" });
-
-      // Verificar que el usuario sea runner
-      if (usuario.TipoUsuario.ToLower() != "runner")
-        return BadRequest(new { message = "Este endpoint es solo para runners" });
-
-      if (usuario.PerfilRunner == null)
-        return BadRequest(new { message = "Perfil runner no encontrado" });
-
-      // Validar edad mínima (14 años)
-      var fechaNacimiento = dto.FechaNacimiento;
-
-      var edad = DateTime.Today.Year - dto.FechaNacimiento.Year;
-      if (dto.FechaNacimiento.Date > DateTime.Today.AddYears(-edad))
-        edad--;
-
-      if (edad < 14)
-        return BadRequest(new { message = "Debes tener al menos 14 años para participar" });
-
-      if (dto.FechaNacimiento > DateTime.Today)
-        return BadRequest(new { message = "La fecha de nacimiento no puede ser futura" });
-
-
-      // Normalizar y validar genero
-      if (!string.IsNullOrEmpty(dto.Genero))
+      try
       {
-        dto.Genero = dto.Genero.ToUpper().Trim();
-        if (dto.Genero != "F" && dto.Genero != "M" && dto.Genero != "X")
-          return BadRequest(new { message = "El genero debe ser F, M o X" });
-      }
+        //Obtener ID del usuario autenticado desde el token JWT
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+          return Unauthorized(new { message = "Token invalido" });
 
-      //Actualizar la tabla usuarios
-      usuario.Nombre = dto.Nombre.Trim();
-      usuario.Telefono = dto.Telefono;
-      await _usuarioRepositorio.UpdateAsync(usuario);
+        //Buscar usuario con su perfil runner
+        var usuario = await _usuarioRepositorio.GetByIdAsync(userId);
+        if (usuario == null)
+          return NotFound(new { message = "Usuario no encontrado" });
 
-      //Actualizar tabla perfiles_runners
-      usuario.PerfilRunner.Nombre = dto.Nombre.Trim();
-      usuario.PerfilRunner.Apellido = dto.Apellido.Trim();
+        //Verificar que sea runner
+        if (usuario.TipoUsuario.ToLower() != "runner")
+          return BadRequest(new { message = "Este endpoint es solo para runners" });
 
-      //ACTUALIZAR CAMPOS CON NORMALIZACION (DNI y Email NO se actualizan)
-      usuario.PerfilRunner.Localidad = dto.Localidad.Trim();
-      usuario.PerfilRunner.Agrupacion = dto.Agrupacion.Trim();
-      usuario.PerfilRunner.TelefonoEmergencia = dto.TelefonoEmergencia.Trim();
+        //Verificar que tenga perfil runner
+        if (usuario.PerfilRunner == null)
+          return NotFound(new { message = "Perfil runner no encontrado" });
 
-      await _usuarioRepositorio.UpdatePerfilRunnerAsync(usuario.PerfilRunner);
+        //Validar edad minima (14 años)
+        var edad = DateTime.Now.Year - dto.FechaNacimiento.Year;
+        if (DateTime.Now < dto.FechaNacimiento.AddYears(edad))
+          edad--;
 
-      return Ok(new
-      {
-        message = "Perfil de runner actualizado exitosamente",
-        usuario = new
+        if (edad < 14)
+          return BadRequest(new { message = "Debes tener al menos 14 años para registrarte" });
+
+        //Verificar que el DNI no este en uso por otro usuario
+        if (dto.Dni != usuario.PerfilRunner.Dni)
         {
-          idUsuario = usuario.IdUsuario,
-          nombre = usuario.Nombre,
-          apellido = usuario.PerfilRunner.Apellido,
-          email = usuario.Email,
-          telefono = usuario.Telefono,
-          tipoUsuario = usuario.TipoUsuario,
-          fechaNacimiento = usuario.PerfilRunner.FechaNacimiento,
-          genero = usuario.PerfilRunner.Genero,
-          dni = usuario.PerfilRunner.Dni,
-          localidad = usuario.PerfilRunner.Localidad,
-          agrupacion = usuario.PerfilRunner.Agrupacion,
-          telefonoEmergencia = usuario.PerfilRunner.TelefonoEmergencia
+          if (await _usuarioRepositorio.DniExisteAsync(dto.Dni))
+            return BadRequest(new { message = "El DNI ya esta registrado por otro usuario" });
         }
-      });
+
+        //Actualizar datos en tabla usuarios
+        usuario.Nombre = dto.Nombre.Trim();
+        usuario.Telefono = dto.Telefono.Trim();
+
+        //Actualizar datos en perfiles_runners
+        usuario.PerfilRunner.Nombre = dto.Nombre.Trim();
+        usuario.PerfilRunner.Apellido = dto.Apellido.Trim();
+        usuario.PerfilRunner.FechaNacimiento = dto.FechaNacimiento;
+        usuario.PerfilRunner.Genero = dto.Genero.ToUpper();
+        usuario.PerfilRunner.Dni = dto.Dni;
+        usuario.PerfilRunner.Localidad = dto.Localidad.Trim();
+        usuario.PerfilRunner.Agrupacion = dto.Agrupacion.Trim();
+        usuario.PerfilRunner.NombreContactoEmergencia = dto.NombreContactoEmergencia.Trim();
+        usuario.PerfilRunner.TelefonoEmergencia = dto.TelefonoEmergencia.Trim();
+
+        //Guardar cambios
+        await _usuarioRepositorio.UpdateAsync(usuario);
+
+        //Retornar respuesta
+        return Ok(new
+        {
+          message = "Perfil actualizado exitosamente. Ya puedes inscribirte a eventos",
+          usuario = new
+          {
+            idUsuario = usuario.IdUsuario,
+            nombre = usuario.Nombre,
+            email = usuario.Email,
+            telefono = usuario.Telefono,
+            tipoUsuario = usuario.TipoUsuario,
+            perfilCompleto = true
+          }
+        });
+      }
+      catch (Exception ex)
+      {
+        return StatusCode(500, new { message = "Error al actualizar perfil", error = ex.Message });
+      }
     }
 
 
-    /*PUT: api/Usuario/ActualizarPerfilOrganizador
-    Actualiza el perfil de un Organizador autenticado
+    /*actualizar perfil de un usuario RUNNER - Actualiza usuarios + perfiles_organizadores
+    PUT: api/Usuario/ActualizarPerfilOrganizador
+    Requerido todos perfil completo para poder crear eventos
     Content-Type: application/json*/
     [HttpPut("ActualizarPerfilOrganizador")]
     public async Task<IActionResult> ActualizarPerfilOrganizador([FromBody] ActualizarPerfilOrganizadorDto dto)
     {
-      // Validar modelo
-      if (!ModelState.IsValid)
-        return BadRequest(ModelState);
-
-      // Obtener Id del usuario desde el token
-      var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-      if (userIdClaim == null)
-        return Unauthorized(new { message = "No autorizado" });
-
-      var userId = int.Parse(userIdClaim.Value);
-
-      // Buscar usuario en la BD
-      var usuario = await _usuarioRepositorio.GetByIdAsync(userId);
-
-      if (usuario == null)
-        return NotFound(new { message = "Usuario no encontrado" });
-
-      // Verificar que el usuario sea organizador
-      if (usuario.TipoUsuario.ToLower() != "organizador")
-        return BadRequest(new { message = "Este endpoint es solo para organizadores" });
-
-      // Actualizar la tabla usuarios (Email no se actualiza)
-      usuario.Nombre = dto.Nombre.Trim();
-      usuario.Telefono = dto.Telefono;
-
-      // Guardar cambios en la BD
-      await _usuarioRepositorio.UpdateAsync(usuario);
-
-      //Actualiza la tabla perfiles_organizadores
-      usuario.PerfilOrganizador.RazonSocial = dto.RazonSocial.Trim();
-      usuario.PerfilOrganizador.NombreComercial = dto.NombreComercial.Trim();
-      usuario.PerfilOrganizador.DireccionLegal = dto.DireccionLegal.Trim();
-
-      //Guardamos en la BD
-      await _usuarioRepositorio.UpdatePerfilOrganizadorAsync(usuario.PerfilOrganizador);
-
-      // Retornar usuario actualizado
-      return Ok(new
+      try
       {
-        message = "Perfil de organizador actualizado exitosamente",
-        usuario = new
+        //Obtener ID del usuario autenticado desde el token JWT
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+          return Unauthorized(new { message = "Token invalido" });
+
+        //Buscar usuario con su perfil organizador
+        var usuario = await _usuarioRepositorio.GetByIdAsync(userId);
+        if (usuario == null)
+          return NotFound(new { message = "Usuario no encontrado" });
+
+        //Verificar que sea organizador
+        if (usuario.TipoUsuario.ToLower() != "organizador")
+          return BadRequest(new { message = "Este endpoint es solo para organizadores" });
+
+        //Verificar que tenga perfil organizador
+        if (usuario.PerfilOrganizador == null)
+          return NotFound(new { message = "Perfil organizador no encontrado" });
+
+        //Verificar que el CUIT no este en uso por otro usuario
+        if (dto.CuitTaxId != usuario.PerfilOrganizador.CuitTaxId)
         {
-          idUsuario = usuario.IdUsuario,
-          nombre = usuario.Nombre,
-          razonSocial = usuario.PerfilOrganizador.RazonSocial,
-          nombreComercial = usuario.PerfilOrganizador.NombreComercial,
-          email = usuario.Email,
-          telefono = usuario.Telefono,
-          tipoUsuario = usuario.TipoUsuario,
-          direccionLegal = usuario.PerfilOrganizador.DireccionLegal
+          if (await _usuarioRepositorio.CuitExisteAsync(dto.CuitTaxId))
+            return BadRequest(new { message = "El CUIT ya esta registrado por otro usuario" });
         }
-      });
+
+        //Actualizar datos en tabla usuarios
+        usuario.Nombre = dto.Nombre.Trim();
+        usuario.Telefono = dto.Telefono.Trim();
+
+        //Actualizar datos en perfiles_organizadores
+        usuario.PerfilOrganizador.RazonSocial = dto.RazonSocial.Trim();
+        usuario.PerfilOrganizador.NombreComercial = dto.NombreComercial.Trim();
+        usuario.PerfilOrganizador.CuitTaxId = dto.CuitTaxId.Trim();
+        usuario.PerfilOrganizador.DireccionLegal = dto.DireccionLegal.Trim();
+
+        //Guardar cambios
+        await _usuarioRepositorio.UpdateAsync(usuario);
+
+        //Retornar respuesta
+        return Ok(new
+        {
+          message = "Perfil actualizado exitosamente. Ya puedes crear eventos",
+          usuario = new
+          {
+            idUsuario = usuario.IdUsuario,
+            nombre = usuario.Nombre,
+            email = usuario.Email,
+            telefono = usuario.Telefono,
+            tipoUsuario = usuario.TipoUsuario,
+            perfilCompleto = true
+          }
+        });
+      }
+      catch (Exception ex)
+      {
+        return StatusCode(500, new { message = "Error al actualizar perfil", error = ex.Message });
+      }
     }
 
     /*Gestion de contraseña - cambiar la contraseña de usuario
@@ -475,32 +517,38 @@ namespace RunnConnectAPI.Controllers
     [HttpPut("CambiarPassword")]
     public async Task<IActionResult> CambiarPassword([FromBody] CambiarPasswordDto dto)
     {
-      // 1. Validar modelo
+      try
+      {
+      //Validar modelo
       if (!ModelState.IsValid)
         return BadRequest(ModelState);
 
-      // 2. Obtener ID del usuario desde el token
+      //Obtener ID del usuario desde el token
       var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
       if (userIdClaim == null)
         return Unauthorized(new { message = "No autorizado" });
 
       var userId = int.Parse(userIdClaim.Value);
 
-      // 3. Buscar usuario en la BD
+      //Buscar usuario en la BD
       var usuario = await _usuarioRepositorio.GetByIdAsync(userId);
 
       if (usuario == null)
         return NotFound(new { message = "Usuario no encontrado" });
 
-      // 4. Verificar contraseña actual
+      //Verificar contraseña actual
       if (!_passwordService.VerifyPassword(dto.PasswordActual, usuario.PasswordHash))
         return BadRequest(new { message = "La contraseña actual es incorrecta" });
 
-      // 5. Actualizar contraseña
+      //Actualizar contraseña
       usuario.PasswordHash = _passwordService.HashPassword(dto.NuevaPassword);
       await _usuarioRepositorio.UpdateAsync(usuario);
 
       return Ok(new { message = "Contraseña cambiada exitosamente" });
+    } catch (Exception ex)
+      {
+        return StatusCode(500, new { message = "Error al cambiar contraseña", error = ex.Message });
+      }
     }
 
     //verificar email antes de registrar
@@ -509,6 +557,8 @@ namespace RunnConnectAPI.Controllers
     [HttpGet("verificarEmail")]
     public async Task<IActionResult> VerificarEmail([FromQuery] string email)
     {
+      try
+      {
       //Validar que el email no este vacio
       if (string.IsNullOrEmpty(email))
         return BadRequest(new { message = "Email requerido" });
@@ -522,6 +572,11 @@ namespace RunnConnectAPI.Controllers
         disponible = !existe,
         message = existe ? "Email ya registrado" : "Email disponible"
       });
+      }
+      catch (Exception ex)
+      {
+        return StatusCode(500, new{message="Error al verificar email", error= ex.Message});
+      }
     }
 
     //verificar dni si esta disponible antes de registrase solo RUNNERS
@@ -530,6 +585,8 @@ namespace RunnConnectAPI.Controllers
     [HttpGet("verificarDni")]
     public async Task<IActionResult> VerificarDni([FromQuery] int dni)
     {
+      try
+      {
       //Validar que el Dni sea valido mayor a 0
       if (dni <= 0)
         return BadRequest(new { message = "DNI invalido" });
@@ -543,7 +600,11 @@ namespace RunnConnectAPI.Controllers
         disponible = !existe,
         message = existe ? "Dni ya registrado" : "Dni disponible"
       });
-
+      }
+      catch (Exception ex)
+      {
+         return StatusCode(500, new { message = "Error al verificar DNI", error = ex.Message });
+      }
     }
 
     /*Verificar CUIT del organizador
@@ -552,6 +613,8 @@ namespace RunnConnectAPI.Controllers
     [HttpGet("VerificarCuit")]
     public async Task<IActionResult> VerificarCuit([FromQuery] string cuit)
     {
+      try
+      {
       if (string.IsNullOrEmpty(cuit))
         return BadRequest(new { message = "CUIT requerido" });
 
@@ -562,6 +625,11 @@ namespace RunnConnectAPI.Controllers
         disponible = !existe,
         message = existe ? "CUIT ya registrado" : "CUIT disponible"
       });
+      }
+      catch (Exception ex)
+      {
+        return StatusCode(500, new { message = "Error al verificar CUIT", error = ex.Message });
+      }
     }
 
 
@@ -572,6 +640,8 @@ namespace RunnConnectAPI.Controllers
     [HttpGet("Runner/{id}")]
     public async Task<IActionResult> ObtenerPerfilRunner(int id)
     {
+      try
+      {
       // Buscar usuario por id (solo activos)
       var usuario = await _usuarioRepositorio.GetByIdAsync(id);
 
@@ -591,9 +661,13 @@ namespace RunnConnectAPI.Controllers
       var avatarUrl = _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
 
       // Calcular edad del runner
-      var edad = DateTime.Now.Year - usuario.PerfilRunner.FechaNacimiento.Year;
-      if (DateTime.Now < usuario.PerfilRunner.FechaNacimiento.AddYears(edad))
-        edad--;
+      int? edad = null;
+      if (usuario.PerfilRunner.FechaNacimiento.HasValue)
+      {
+        edad = DateTime.Now.Year - usuario.PerfilRunner.FechaNacimiento.Value.Year;
+        if (DateTime.Now < usuario.PerfilRunner.FechaNacimiento.Value.AddYears(edad.Value))
+          edad--;
+      }
 
       // Retornar informacion publica del runner
       return Ok(new
@@ -609,6 +683,10 @@ namespace RunnConnectAPI.Controllers
         imgAvatar = avatarUrl
         // Nota: No incluimos DNI, telefonos, email por privacidad
       });
+      } catch(Exception ex)
+      {
+        return StatusCode(500, new { message = "Error al obtener perfil runner", error = ex.Message });
+      }
     }
 
     /*Obtiene el perfil publico detallado de un Organizador 
@@ -618,6 +696,8 @@ namespace RunnConnectAPI.Controllers
     [HttpGet("Organizador/{id}")]
     public async Task<IActionResult> ObtenerPerfilOrganizador(int id)
     {
+      try
+      {
       // Buscar usuario por id (solo activos)
       var usuario = await _usuarioRepositorio.GetByIdAsync(id);
 
@@ -645,6 +725,10 @@ namespace RunnConnectAPI.Controllers
         email = usuario.Email, // Email publico para consultas
         imgAvatar = avatarUrl    // Nota: No incluimos campos sensibles como passwordHash, estado, etc.
       });
+      } catch(Exception ex)
+      {
+        return StatusCode(500, new { message = "Error al obtener perfil organizador", error = ex.Message });
+      }
     }
 
     //Eliminacion logica cambia estado
@@ -654,6 +738,8 @@ namespace RunnConnectAPI.Controllers
     [HttpDelete("Perfil")]
     public async Task<IActionResult> EliminarCuenta()
     {
+      try
+      {
       //Obtenemos el id del usuario desde el token
       var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
       if (userIdClaim == null)
@@ -678,7 +764,11 @@ namespace RunnConnectAPI.Controllers
       await _usuarioRepositorio.DeleteLogicoAsync(usuario);
 
       return Ok(new { message = "Cuenta eliminada exitosamente" });
-    }
+    } catch (Exception ex)
+      {
+       return StatusCode(500, new { message = "Error al eliminar cuenta", error = ex.Message }); 
+      }
+    } 
 
     /*Actualiza avatar usuario autenticado
     PUT: api/Usuario/Avatar
@@ -686,7 +776,7 @@ namespace RunnConnectAPI.Controllers
     [Authorize]
     [HttpPut("Avatar")]
     public async Task<IActionResult> ActualizarAvatar([FromForm] SubirAvatarDto dto)
-{
+    {
       // Validar modelo usando el DTO
       if (!ModelState.IsValid || dto.Imagen == null || dto.Imagen.Length == 0)
         return BadRequest(new { message = "Debe enviar una imagen válida" });
@@ -782,21 +872,28 @@ namespace RunnConnectAPI.Controllers
     [HttpPost("RecuperarPassword")]
     public async Task<IActionResult> RecuperarPassword([FromBody] RecuperarPasswordDto dto)
     {
-      if (!ModelState.IsValid)
-        return BadRequest(ModelState);
-
-      // Buscar usuario por email
-      var usuario = await _usuarioRepositorio.GetByEmailAsync(dto.Email.ToLower());
-
-      // Por seguridad, siempre retornamos el mismo mensaje
-      var mensaje = "Si el email existe, recibiras un correo con instrucciones";
-
-      if (usuario != null)
+      try
       {
-        //Implementar logica de envio de email
-      }
+        // Buscar usuario por email
+        var usuario = await _usuarioRepositorio.GetByEmailAsync(dto.Email.Trim().ToLower());
 
-      return Ok(new { message = mensaje });
+        if (usuario == null)
+          return NotFound(new { message = "No existe un usuario con ese email" });
+
+        // Aqui iria la logica para enviar email con token de recuperacion
+        // Por ahora solo retornamos un mensaje
+
+        return Ok(new
+        {
+          message = "Se ha enviado un email con instrucciones para recuperar tu contraseña",
+          // En producción no retornar informacion sensible
+          debug = "Funcionalidad de envio de email pendiente de implementar"
+        });
+      }
+      catch (Exception ex)
+      {
+        return StatusCode(500, new { message = "Error al recuperar contraseña", error = ex.Message });
+      }
     }
 
 

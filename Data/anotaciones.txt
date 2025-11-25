@@ -1,9 +1,13 @@
-En Usuario:
-Dni es de tipo int - Cambiar en la base de datos
-Falta agregar el campo Estado para dar de baja logica
-Falta agregar el numero (runner/organizador)
-Algunos campos solo estan para runner, en la BD esta comentado en la tabla
-Se agrego el campo imgAvatar 
+En Usuarios:
+Campos compartidos para runner/organizador, en la BD esta comentado en la tabla.
+
+Perfiles_runners:
+Al registrar un nuevo usuario runner completar campos esenciales solo para registro, post registro 
+para inscribirse a un evento todos los campos deben ser completados.
+
+Perfiles_organizadores:
+Al registrar un nuevo usuario organizador completar campos esenciales solo para registro, post registro 
+para crear un evento todos los campos deben ser completados.
 
 
 categoria_evento:

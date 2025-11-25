@@ -6,12 +6,14 @@ namespace RunnConnectAPI.Models
 {
   /*Perfil especifico para runners- Datos personales y deportivos
   Relacion 1:1 con Usuario*/
+
   [Table("perfiles_runners")]
   public class PerfilRunner
   {
+    /*Datos obligatorios al momento del registro del perfil*/
     [Key]
     [Column("idPerfilRunner")]
-    public int idPerfilRunner {get;set;}
+    public int IdPerfilRunner {get;set;}
 
     [Required]
     [Column("idUsuario")]
@@ -27,32 +29,40 @@ namespace RunnConnectAPI.Models
     [Column("apellido")]
     public string Apellido { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "La fecha de nacimiento es obligatoria")]
+    /*Datos que se pueden completarr post registro, pero que antes de inscripcion a evento 
+    debe estar completado en su totalidad para que el organizador pueda obtener datos 
+    de sus runners inscriptos*/
+    // Se completa post registro, pero antes de inscribirse a un evento (requisito)
     [Column("fechaNacimiento", TypeName = "dateTime")]
-    public DateTime FechaNacimiento { get; set; }
+    public DateTime? FechaNacimiento { get; set; }
 
-    [Required(ErrorMessage = "El genero es obligatorio")]
+    // Se completa post registro, pero antes de inscribirse a un evento (requisito)
     [Column("genero", TypeName = "enum('F','M','X')")]
-    public string Genero { get; set; } = string.Empty; // F, M, X
+    public string? Genero { get; set; } // F, M, X
 
-    [Required(ErrorMessage = "El DNI es obligatorio")]
+    // Se completa post registro, pero antes de inscribirse a un evento (requisito)
     [Column("dni")]
-    public int Dni { get; set; }
+    public int? Dni { get; set; }
     
-    [Required(ErrorMessage ="La localidad es requerida")]
+    // Se completa post registro, pero antes de inscribirse a un evento (requisito)
     [StringLength(100)]
     [Column("localidad")]
-    public string Localidad { get; set; }= string.Empty;
+    public string? Localidad { get; set; }
 
-    [Required(ErrorMessage ="La agrupacion es requerida (Si no tiene colocar LIBRE)")]
+   // Se completa post registro, pero antes de inscribirse a un evento (requisito)
     [StringLength(100)]
     [Column("agrupacion")]
-    public string Agrupacion { get; set; }= string.Empty;
+    public string? Agrupacion { get; set; }
 
-    [Required(ErrorMessage = "El telefono de emergencia es obligatorio")]
+    //Se completa post registro, pero antes de inscribirse a un evento (requisito)
+    [StringLength(100)]
+    [Column("nombreContactoEmergencia")]
+    public string? NombreContactoEmergencia{get;set;}
+
+    // Se completa post registro, pero antes de inscribirse a un evento (requisito)
     [StringLength(50)]
     [Column("telefonoEmergencia")]
-    public string TelefonoEmergencia { get; set; } = string.Empty;
+    public string? TelefonoEmergencia { get; set; }
 
     // Navegacion
     [ForeignKey("IdUsuario")]
