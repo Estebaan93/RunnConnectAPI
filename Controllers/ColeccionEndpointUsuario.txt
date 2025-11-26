@@ -39,6 +39,7 @@ AUTENTICACION (1)
 
 PUBLICO (2)
 1. GET /Organizador/{id} - Endpoint publico para ver perfil de un organizador - no requiere autenticacion
+
 2. GET /Runner/{id} - Endpoint publico para ver perfil de un runner - no requiere autenticacion
 
 GESTION DE PERFIL (3)
@@ -89,7 +90,9 @@ GESTION DE AVATAR (2)
   content-type:
 
 
-GESTION DE CONTRASEÑA (2)
+GESTION DE CONTRASEÑA (3)
+Para el AppSetting contraseña de recuperacion: nodl kkvx mfmm nevk
+
 1. PUT /CambiarPassword - Cambiar contraseña - 
     autenticacion: token bearer
     content-type: application/json
@@ -101,17 +104,33 @@ GESTION DE CONTRASEÑA (2)
         "ConfirmarPassword": "nuevapass123" - Mayor a 6 caracteres
       }
 
-2. PUT / RecuperarPassword - Recuperamos el Password
+2. POST / RecuperarPassword - Recuperamos el Password (envia token a mail) - "PASO 1"
+   autenticacion:
+   content-type: application/json
+   request: token para resetear password (1 hora)
+   body:
+    json
+    {
+      "email","esteban.dev22@gmail.com"
+    } 
 
 
 
-VERIFICACIONES PUBLICAS (2)
-GET /VerificarEmail - Verificar disponibilidad email
-GET /VerificarDni - Verificar disponibilidad DNI
+3. POST / RestablecerPassword - Restablece el password a uno nuevo - "PASO 2"
+   autenticacion: token de RecuperarPassword
+   content-type: application/json
+   body:
+    json
+    {
+      "token": "TOKEN QUE RECIBIMOS DEL EMAIL",
+      "passwordNueva": "nuevapass2024",
+      "confirmarPassword": "nuevapass2024"
+    } 
 
-PERFILES PUBLICOS (2)
-GET /{id} - Ver perfil publico básico
-GET /Organizador/{id} - Ver perfil organizador con contacto
+
 
 GESTION DE CUENTA (1)
 DELETE /Perfil - Eliminar cuenta (borrado logico)
+   autenticacion: token bearer
+   content-type: application/json
+   

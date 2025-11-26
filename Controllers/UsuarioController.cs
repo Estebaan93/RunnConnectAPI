@@ -18,13 +18,17 @@ namespace RunnConnectAPI.Controllers
     private readonly JWTService _jwtService;
     private readonly PasswordService _passwordService;
     private readonly FileService _fileService;
+    private readonly TokenRecuperacionRepositorio _tokenRecuperacionRepositorio;
+    private readonly EmailService _emailService;
 
-    public UsuarioController(UsuarioRepositorio usuarioRepositorio, JWTService jwtService, PasswordService passwordService, FileService fileService)
+    public UsuarioController(UsuarioRepositorio usuarioRepositorio, JWTService jwtService, PasswordService passwordService, FileService fileService, TokenRecuperacionRepositorio tokenRecuperacionRepositorio, EmailService emailService)
     {
       _usuarioRepositorio = usuarioRepositorio;
       _jwtService = jwtService;
       _passwordService = passwordService;
       _fileService = fileService;
+      _tokenRecuperacionRepositorio = tokenRecuperacionRepositorio;
+      _emailService = emailService;
     }
 
     /*Autenticacion (Login comun para ambos RUNNER/ORGAN)
@@ -35,35 +39,35 @@ namespace RunnConnectAPI.Controllers
     public async Task<IActionResult> Login([FromBody] LoginRequestDto loginRequestDto)
     {
       try
-      {      
-       //Validamos el modelo DataAnnotations
-      if (!ModelState.IsValid)
-        return BadRequest(ModelState);
-
-      //Buscar por email
-      var usuario = await _usuarioRepositorio.GetByEmailAsync(loginRequestDto.Email);
-
-      if (usuario == null || !_passwordService.VerifyPassword(loginRequestDto.Password, usuario.PasswordHash))
-        return Unauthorized(new { message = "Credenciales invalidas" });
-
-      //Generar token
-      var token = _jwtService.GenerarToken(usuario);
-      var avatarUrl = _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
-
-      //Retornar token
-      return Ok(new
       {
-        token,
-        message = "Login exitoso",
-        usuario = new
+        //Validamos el modelo DataAnnotations
+        if (!ModelState.IsValid)
+          return BadRequest(ModelState);
+
+        //Buscar por email
+        var usuario = await _usuarioRepositorio.GetByEmailAsync(loginRequestDto.Email);
+
+        if (usuario == null || !_passwordService.VerifyPassword(loginRequestDto.Password, usuario.PasswordHash))
+          return Unauthorized(new { message = "Credenciales invalidas" });
+
+        //Generar token
+        var token = _jwtService.GenerarToken(usuario);
+        var avatarUrl = _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
+
+        //Retornar token
+        return Ok(new
         {
-          idUsuario = usuario.IdUsuario,
-          nombre = usuario.Nombre,
-          email = usuario.Email,
-          tipoUsuario = usuario.TipoUsuario,
-          imgAvatar = avatarUrl
-        }
-      });
+          token,
+          message = "Login exitoso",
+          usuario = new
+          {
+            idUsuario = usuario.IdUsuario,
+            nombre = usuario.Nombre,
+            email = usuario.Email,
+            tipoUsuario = usuario.TipoUsuario,
+            imgAvatar = avatarUrl
+          }
+        });
       }
       catch (Exception ex)
       {
@@ -519,33 +523,34 @@ namespace RunnConnectAPI.Controllers
     {
       try
       {
-      //Validar modelo
-      if (!ModelState.IsValid)
-        return BadRequest(ModelState);
+        //Validar modelo
+        if (!ModelState.IsValid)
+          return BadRequest(ModelState);
 
-      //Obtener ID del usuario desde el token
-      var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-      if (userIdClaim == null)
-        return Unauthorized(new { message = "No autorizado" });
+        //Obtener ID del usuario desde el token
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null)
+          return Unauthorized(new { message = "No autorizado" });
 
-      var userId = int.Parse(userIdClaim.Value);
+        var userId = int.Parse(userIdClaim.Value);
 
-      //Buscar usuario en la BD
-      var usuario = await _usuarioRepositorio.GetByIdAsync(userId);
+        //Buscar usuario en la BD
+        var usuario = await _usuarioRepositorio.GetByIdAsync(userId);
 
-      if (usuario == null)
-        return NotFound(new { message = "Usuario no encontrado" });
+        if (usuario == null)
+          return NotFound(new { message = "Usuario no encontrado" });
 
-      //Verificar contraseña actual
-      if (!_passwordService.VerifyPassword(dto.PasswordActual, usuario.PasswordHash))
-        return BadRequest(new { message = "La contraseña actual es incorrecta" });
+        //Verificar contraseña actual
+        if (!_passwordService.VerifyPassword(dto.PasswordActual, usuario.PasswordHash))
+          return BadRequest(new { message = "La contraseña actual es incorrecta" });
 
-      //Actualizar contraseña
-      usuario.PasswordHash = _passwordService.HashPassword(dto.NuevaPassword);
-      await _usuarioRepositorio.UpdateAsync(usuario);
+        //Actualizar contraseña
+        usuario.PasswordHash = _passwordService.HashPassword(dto.NuevaPassword);
+        await _usuarioRepositorio.UpdateAsync(usuario);
 
-      return Ok(new { message = "Contraseña cambiada exitosamente" });
-    } catch (Exception ex)
+        return Ok(new { message = "Contraseña cambiada exitosamente" });
+      }
+      catch (Exception ex)
       {
         return StatusCode(500, new { message = "Error al cambiar contraseña", error = ex.Message });
       }
@@ -559,23 +564,23 @@ namespace RunnConnectAPI.Controllers
     {
       try
       {
-      //Validar que el email no este vacio
-      if (string.IsNullOrEmpty(email))
-        return BadRequest(new { message = "Email requerido" });
+        //Validar que el email no este vacio
+        if (string.IsNullOrEmpty(email))
+          return BadRequest(new { message = "Email requerido" });
 
-      //Verificar si existe un usuario activo con ese email
-      var existe = await _usuarioRepositorio.EmailExistenteAsync(email);
+        //Verificar si existe un usuario activo con ese email
+        var existe = await _usuarioRepositorio.EmailExistenteAsync(email);
 
-      //Renornar disponibilidad
-      return Ok(new
-      {
-        disponible = !existe,
-        message = existe ? "Email ya registrado" : "Email disponible"
-      });
+        //Renornar disponibilidad
+        return Ok(new
+        {
+          disponible = !existe,
+          message = existe ? "Email ya registrado" : "Email disponible"
+        });
       }
       catch (Exception ex)
       {
-        return StatusCode(500, new{message="Error al verificar email", error= ex.Message});
+        return StatusCode(500, new { message = "Error al verificar email", error = ex.Message });
       }
     }
 
@@ -587,23 +592,23 @@ namespace RunnConnectAPI.Controllers
     {
       try
       {
-      //Validar que el Dni sea valido mayor a 0
-      if (dni <= 0)
-        return BadRequest(new { message = "DNI invalido" });
+        //Validar que el Dni sea valido mayor a 0
+        if (dni <= 0)
+          return BadRequest(new { message = "DNI invalido" });
 
-      //Verificar si existe ese Dni en la BD
-      var existe = await _usuarioRepositorio.DniExisteAsync(dni);
+        //Verificar si existe ese Dni en la BD
+        var existe = await _usuarioRepositorio.DniExisteAsync(dni);
 
-      //Retornamos si esta disponible
-      return Ok(new
-      {
-        disponible = !existe,
-        message = existe ? "Dni ya registrado" : "Dni disponible"
-      });
+        //Retornamos si esta disponible
+        return Ok(new
+        {
+          disponible = !existe,
+          message = existe ? "Dni ya registrado" : "Dni disponible"
+        });
       }
       catch (Exception ex)
       {
-         return StatusCode(500, new { message = "Error al verificar DNI", error = ex.Message });
+        return StatusCode(500, new { message = "Error al verificar DNI", error = ex.Message });
       }
     }
 
@@ -615,16 +620,16 @@ namespace RunnConnectAPI.Controllers
     {
       try
       {
-      if (string.IsNullOrEmpty(cuit))
-        return BadRequest(new { message = "CUIT requerido" });
+        if (string.IsNullOrEmpty(cuit))
+          return BadRequest(new { message = "CUIT requerido" });
 
-      var existe = await _usuarioRepositorio.CuitExisteAsync(cuit.Trim());
+        var existe = await _usuarioRepositorio.CuitExisteAsync(cuit.Trim());
 
-      return Ok(new
-      {
-        disponible = !existe,
-        message = existe ? "CUIT ya registrado" : "CUIT disponible"
-      });
+        return Ok(new
+        {
+          disponible = !existe,
+          message = existe ? "CUIT ya registrado" : "CUIT disponible"
+        });
       }
       catch (Exception ex)
       {
@@ -642,48 +647,49 @@ namespace RunnConnectAPI.Controllers
     {
       try
       {
-      // Buscar usuario por id (solo activos)
-      var usuario = await _usuarioRepositorio.GetByIdAsync(id);
+        // Buscar usuario por id (solo activos)
+        var usuario = await _usuarioRepositorio.GetByIdAsync(id);
 
-      // Si no existe o esta eliminado
-      if (usuario == null)
-        return NotFound(new { message = "Usuario no encontrado" });
+        // Si no existe o esta eliminado
+        if (usuario == null)
+          return NotFound(new { message = "Usuario no encontrado" });
 
-      // Verificar que sea runner
-      if (usuario.TipoUsuario.ToLower() != "runner")
-        return BadRequest(new { message = "El usuario no es un runner" });
+        // Verificar que sea runner
+        if (usuario.TipoUsuario.ToLower() != "runner")
+          return BadRequest(new { message = "El usuario no es un runner" });
 
-      // Verificar que tenga perfil runner cargado
-      if (usuario.PerfilRunner == null)
-        return NotFound(new { message = "Perfil runner no encontrado" });
+        // Verificar que tenga perfil runner cargado
+        if (usuario.PerfilRunner == null)
+          return NotFound(new { message = "Perfil runner no encontrado" });
 
-      // Obtener URL completa del avatar
-      var avatarUrl = _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
+        // Obtener URL completa del avatar
+        var avatarUrl = _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
 
-      // Calcular edad del runner
-      int? edad = null;
-      if (usuario.PerfilRunner.FechaNacimiento.HasValue)
-      {
-        edad = DateTime.Now.Year - usuario.PerfilRunner.FechaNacimiento.Value.Year;
-        if (DateTime.Now < usuario.PerfilRunner.FechaNacimiento.Value.AddYears(edad.Value))
-          edad--;
+        // Calcular edad del runner
+        int? edad = null;
+        if (usuario.PerfilRunner.FechaNacimiento.HasValue)
+        {
+          edad = DateTime.Now.Year - usuario.PerfilRunner.FechaNacimiento.Value.Year;
+          if (DateTime.Now < usuario.PerfilRunner.FechaNacimiento.Value.AddYears(edad.Value))
+            edad--;
+        }
+
+        // Retornar informacion publica del runner
+        return Ok(new
+        {
+          idUsuario = usuario.IdUsuario,
+          nombre = usuario.PerfilRunner.Nombre,
+          apellido = usuario.PerfilRunner.Apellido,
+          tipoUsuario = usuario.TipoUsuario,
+          localidad = usuario.PerfilRunner.Localidad,
+          agrupacion = usuario.PerfilRunner.Agrupacion,
+          edad = edad,
+          genero = usuario.PerfilRunner.Genero,
+          imgAvatar = avatarUrl
+          // Nota: No incluimos DNI, telefonos, email por privacidad
+        });
       }
-
-      // Retornar informacion publica del runner
-      return Ok(new
-      {
-        idUsuario = usuario.IdUsuario,
-        nombre = usuario.PerfilRunner.Nombre,
-        apellido = usuario.PerfilRunner.Apellido,
-        tipoUsuario = usuario.TipoUsuario,
-        localidad = usuario.PerfilRunner.Localidad,
-        agrupacion = usuario.PerfilRunner.Agrupacion,
-        edad = edad,
-        genero = usuario.PerfilRunner.Genero,
-        imgAvatar = avatarUrl
-        // Nota: No incluimos DNI, telefonos, email por privacidad
-      });
-      } catch(Exception ex)
+      catch (Exception ex)
       {
         return StatusCode(500, new { message = "Error al obtener perfil runner", error = ex.Message });
       }
@@ -698,34 +704,35 @@ namespace RunnConnectAPI.Controllers
     {
       try
       {
-      // Buscar usuario por id (solo activos)
-      var usuario = await _usuarioRepositorio.GetByIdAsync(id);
+        // Buscar usuario por id (solo activos)
+        var usuario = await _usuarioRepositorio.GetByIdAsync(id);
 
-      // Si no existe o esta eliminado
-      if (usuario == null)
-        return NotFound(new { message = "Usuario no encontrado" });
+        // Si no existe o esta eliminado
+        if (usuario == null)
+          return NotFound(new { message = "Usuario no encontrado" });
 
-      // Verificar que sea organizador
-      if (usuario.TipoUsuario.ToLower() != "organizador")
-        return BadRequest(new { message = "El usuario no es un organizador" });
+        // Verificar que sea organizador
+        if (usuario.TipoUsuario.ToLower() != "organizador")
+          return BadRequest(new { message = "El usuario no es un organizador" });
 
-      //Obtenemos el imgAvatar
-      var avatarUrl = _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
+        //Obtenemos el imgAvatar
+        var avatarUrl = _fileService.ObtenerUrlCompleta(usuario.ImgAvatar, Request);
 
-      // Retornar informacion publica del organizador
-      return Ok(new
-      {
-        idUsuario = usuario.IdUsuario,
-        nombre = usuario.Nombre,
-        razonSocial = usuario.PerfilOrganizador.RazonSocial,
-        nombreComercial = usuario.PerfilOrganizador.NombreComercial,
-        direccionLegal = usuario.PerfilOrganizador.DireccionLegal,
-        tipoUsuario = usuario.TipoUsuario,
-        telefono = usuario.Telefono, // Telefono publico para contacto
-        email = usuario.Email, // Email publico para consultas
-        imgAvatar = avatarUrl    // Nota: No incluimos campos sensibles como passwordHash, estado, etc.
-      });
-      } catch(Exception ex)
+        // Retornar informacion publica del organizador
+        return Ok(new
+        {
+          idUsuario = usuario.IdUsuario,
+          nombre = usuario.Nombre,
+          razonSocial = usuario.PerfilOrganizador.RazonSocial,
+          nombreComercial = usuario.PerfilOrganizador.NombreComercial,
+          direccionLegal = usuario.PerfilOrganizador.DireccionLegal,
+          tipoUsuario = usuario.TipoUsuario,
+          telefono = usuario.Telefono, // Telefono publico para contacto
+          email = usuario.Email, // Email publico para consultas
+          imgAvatar = avatarUrl    // Nota: No incluimos campos sensibles como passwordHash, estado, etc.
+        });
+      }
+      catch (Exception ex)
       {
         return StatusCode(500, new { message = "Error al obtener perfil organizador", error = ex.Message });
       }
@@ -740,35 +747,36 @@ namespace RunnConnectAPI.Controllers
     {
       try
       {
-      //Obtenemos el id del usuario desde el token
-      var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-      if (userIdClaim == null)
-        return Unauthorized(new { message = "No autorizado" });
+        //Obtenemos el id del usuario desde el token
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null)
+          return Unauthorized(new { message = "No autorizado" });
 
-      var userId = int.Parse(userIdClaim.Value);
+        var userId = int.Parse(userIdClaim.Value);
 
-      //Buscamos el usuario en la BD
-      var usuario = await _usuarioRepositorio.GetByIdAsync(userId);
+        //Buscamos el usuario en la BD
+        var usuario = await _usuarioRepositorio.GetByIdAsync(userId);
 
-      if (usuario == null)
-        return NotFound(new { message = "Usuario no encontrado" });
+        if (usuario == null)
+          return NotFound(new { message = "Usuario no encontrado" });
 
-      //Eliminamos avatar si existe y no es el por defecto
-      if (!string.IsNullOrEmpty(usuario.ImgAvatar))
-      {
-        _fileService.EliminarAvatar(usuario.ImgAvatar);
-      }
+        //Eliminamos avatar si existe y no es el por defecto
+        if (!string.IsNullOrEmpty(usuario.ImgAvatar))
+        {
+          _fileService.EliminarAvatar(usuario.ImgAvatar);
+        }
       ;
 
-      //Eliminado logico su estado pasa a falso
-      await _usuarioRepositorio.DeleteLogicoAsync(usuario);
+        //Eliminado logico su estado pasa a falso
+        await _usuarioRepositorio.DeleteLogicoAsync(usuario);
 
-      return Ok(new { message = "Cuenta eliminada exitosamente" });
-    } catch (Exception ex)
-      {
-       return StatusCode(500, new { message = "Error al eliminar cuenta", error = ex.Message }); 
+        return Ok(new { message = "Cuenta eliminada exitosamente" });
       }
-    } 
+      catch (Exception ex)
+      {
+        return StatusCode(500, new { message = "Error al eliminar cuenta", error = ex.Message });
+      }
+    }
 
     /*Actualiza avatar usuario autenticado
     PUT: api/Usuario/Avatar
@@ -867,7 +875,8 @@ namespace RunnConnectAPI.Controllers
     }
 
     /*Recuperar contraseña (envia email con token)
-      POST: api/Usuario/RecuperarPassword*/
+      POST: api/Usuario/RecuperarPassword
+      Genera token unico, lo guarda en la BD y envia con link de recuperacion*/
     [AllowAnonymous]
     [HttpPost("RecuperarPassword")]
     public async Task<IActionResult> RecuperarPassword([FromBody] RecuperarPasswordDto dto)
@@ -876,25 +885,93 @@ namespace RunnConnectAPI.Controllers
       {
         // Buscar usuario por email
         var usuario = await _usuarioRepositorio.GetByEmailAsync(dto.Email.Trim().ToLower());
-
         if (usuario == null)
           return NotFound(new { message = "No existe un usuario con ese email" });
 
-        // Aqui iria la logica para enviar email con token de recuperacion
-        // Por ahora solo retornamos un mensaje
+        //Generar token unico
+        var token = Guid.NewGuid().ToString("N"); // Token sin guiones
 
+        //Crear registro de token (valido por 1 hora)
+        var tokenRecuperacion = new TokenRecuperacion
+        {
+          IdUsuario = usuario.IdUsuario,
+          Token = token,
+          FechaCreacion = DateTime.Now,
+          FechaExpiracion = DateTime.Now.AddHours(1),
+          Usado = false
+        };
+
+        //Guardar token en BD
+        await _tokenRecuperacionRepositorio.CrearAsync(tokenRecuperacion);
+
+        //Enviar email
+        var emailEnviado = await _emailService.EnviarEmailRecuperacionAsync(
+          usuario.Email,
+          usuario.Nombre,
+          token
+        );
+
+        if (!emailEnviado)
+        {
+          // Si falla el envio, marcar token como usado para invalidarlo
+          await _tokenRecuperacionRepositorio.UpdateAsync(tokenRecuperacion);
+          return StatusCode(500, new { message = "Error al enviar el email de recuperación. Intenta nuevamente." });
+        }
+        //Retornar exito (sin exponer info sensible)
         return Ok(new
         {
           message = "Se ha enviado un email con instrucciones para recuperar tu contraseña",
-          // En producción no retornar informacion sensible
-          debug = "Funcionalidad de envio de email pendiente de implementar"
+          info = "Revisa tu bandeja de entrada y spam. El enlace expira en 1 hora."
         });
       }
       catch (Exception ex)
       {
-        return StatusCode(500, new { message = "Error al recuperar contraseña", error = ex.Message });
+        return StatusCode(500, new { message = "Error al procesar solicitud", error = ex.Message });
       }
     }
+
+    [AllowAnonymous]
+    [HttpPost("RestablecerPassword")]
+    public async Task<IActionResult> RestablecerPassword([FromBody] RestablecerPasswordDto dto)
+    {
+      try
+      {
+        // Buscar token
+        var tokenRecuperacion = await _tokenRecuperacionRepositorio.GetByTokenAsync(dto.Token);
+
+        if (tokenRecuperacion == null)
+          return BadRequest(new { message = "Token inválido" });
+
+        // Verificar que no esté usado
+        if (tokenRecuperacion.Usado)
+          return BadRequest(new { message = "Este token ya fue utilizado" });
+
+        // Verificar que no esté expirado
+        if (DateTime.Now > tokenRecuperacion.FechaExpiracion)
+          return BadRequest(new { message = "El token ha expirado. Solicita uno nuevo" });
+
+        // Buscar usuario
+        var usuario = await _usuarioRepositorio.GetByIdAsync(tokenRecuperacion.IdUsuario);
+        if (usuario == null)
+          return NotFound(new { message = "Usuario no encontrado" });
+
+        // Actualizar password
+        usuario.PasswordHash = _passwordService.HashPassword(dto.PasswordNueva);
+        await _usuarioRepositorio.UpdateAsync(usuario);
+
+        // Marcar token como usado
+        tokenRecuperacion.Usado = true;
+        await _tokenRecuperacionRepositorio.UpdateAsync(tokenRecuperacion);
+
+        // Retornar éxito
+        return Ok(new { message = "Contraseña restablecida exitosamente. Ya puedes iniciar sesión" });
+      }
+      catch (Exception ex)
+      {
+        return StatusCode(500, new { message = "Error al restablecer contraseña", error = ex.Message });
+      }
+    }
+
 
 
   }

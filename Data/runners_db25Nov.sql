@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 24-11-2025 a las 15:23:32
+-- Tiempo de generación: 26-11-2025 a las 02:41:50
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -110,7 +110,8 @@ CREATE TABLE `perfiles_organizadores` (
 --
 
 INSERT INTO `perfiles_organizadores` (`idPerfilOrganizador`, `idUsuario`, `razonSocial`, `nombreComercial`, `cuit_taxid`, `direccionLegal`) VALUES
-(1, 3, 'Runners Club San Luis S.A', 'Runners Club SL', '30-12345678-9', 'Av Illia 435, San Luis');
+(1, 3, 'Runners Club San Luis S.A', 'Runners Club SL', '30-12345678-9', 'Av Illia 435, San Luis'),
+(2, 5, 'Club Deportivo La Punta', 'CD La Punta', '20-55667788-3', 'Av. Costanera s/n, La Punta, San Luis');
 
 -- --------------------------------------------------------
 
@@ -137,7 +138,8 @@ CREATE TABLE `perfiles_runners` (
 --
 
 INSERT INTO `perfiles_runners` (`idPerfilRunner`, `idUsuario`, `nombre`, `apellido`, `fechaNacimiento`, `genero`, `dni`, `localidad`, `agrupacion`, `nombreContactoEmergencia`, `telefonoEmergencia`) VALUES
-(2, 2, 'Carlos Angel', 'González Pérez', '1990-03-20 00:00:00', 'M', 11111111, 'Juana Koslay', 'Equipo Trail Running SL', 'Emilia (pareja)', '2664888999');
+(2, 2, 'Carlos Angel', 'González Pérez', '1990-03-20 00:00:00', 'M', 11111111, 'Juana Koslay', 'Equipo Trail Running SL', 'Emilia (pareja)', '2664888999'),
+(3, 4, 'Test1 Runner Nombre', 'Test Runner Apellido', '2011-03-20 00:00:00', 'M', 22222222, 'Juana Koslay', 'Equipo Trail Running SL', 'Pareja', '2664888999');
 
 -- --------------------------------------------------------
 
@@ -192,6 +194,29 @@ CREATE TABLE `rutas` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `tokens_recuperacion`
+--
+
+CREATE TABLE `tokens_recuperacion` (
+  `idToken` int(11) NOT NULL,
+  `idUsuario` int(11) NOT NULL,
+  `token` varchar(255) NOT NULL COMMENT 'Token unico generado',
+  `fechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `fechaExpiracion` datetime NOT NULL COMMENT 'Token valido por 1 hora',
+  `usado` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'false=no usado, true=ya usado'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `tokens_recuperacion`
+--
+
+INSERT INTO `tokens_recuperacion` (`idToken`, `idUsuario`, `token`, `fechaCreacion`, `fechaExpiracion`, `usado`) VALUES
+(1, 4, '9b933ab08a974a96a703ee8959e9be3e', '2025-11-25 22:04:24', '2025-11-25 23:04:24', 0),
+(2, 4, '5a1d425c997349d38b9293a47e6e4369', '2025-11-25 22:20:38', '2025-11-25 23:20:38', 1);
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `usuarios`
 --
 
@@ -212,7 +237,9 @@ CREATE TABLE `usuarios` (
 
 INSERT INTO `usuarios` (`idUsuario`, `nombre`, `email`, `telefono`, `passwordHash`, `tipoUsuario`, `estado`, `imgAvatar`) VALUES
 (2, 'Carlos Angel', 'carlos@test.com', '2664222333', '$2a$12$1eEF/knMNucRBPUTHbWD1Ortnqnafy4rIlyGPrDSAKe10NIAKaRri', 'runner', 1, '/uploads/avatars/defaults/default_runner.png'),
-(3, 'Juan Carlos', 'eventos@runnersclub.com', '2664111113', '$2a$12$4OatEBqyW4e6SJmeBhk8R.mT4StPBw5WtNHpuTBGldfeQ7NdKebpy', 'organizador', 1, '/uploads/avatars/defaults/default_organization.png');
+(3, 'Juan Carlos', 'eventos@runnersclub.com', '2664111113', '$2a$12$4OatEBqyW4e6SJmeBhk8R.mT4StPBw5WtNHpuTBGldfeQ7NdKebpy', 'organizador', 1, '/uploads/avatars/defaults/default_organization.png'),
+(4, 'Test1 Runner Nombre', 'esteban.dev22@gmail.com', '2664222222', '$2a$12$q2Gzkt.ezJhB5gMJzb/HD.zXpciqBr0oq95GOfYVun3HGa.vfWp8e', 'runner', 0, '/uploads/avatars/defaults/default_runner.png'),
+(5, 'CD La Punta', 'test@orgaclub.com', '2664555888', '$2a$12$lW5ct48GPMIkPIc6HMhvee9799yiqGvgkibashONZslvx0WbJIXgW', 'organizador', 1, '/uploads/avatars/defaults/default_organization.png');
 
 --
 -- Índices para tablas volcadas
@@ -286,6 +313,14 @@ ALTER TABLE `rutas`
   ADD KEY `idEvento` (`idEvento`);
 
 --
+-- Indices de la tabla `tokens_recuperacion`
+--
+ALTER TABLE `tokens_recuperacion`
+  ADD PRIMARY KEY (`idToken`),
+  ADD UNIQUE KEY `token_UNIQUE` (`token`),
+  ADD KEY `fk_tokens_usuarios` (`idUsuario`);
+
+--
 -- Indices de la tabla `usuarios`
 --
 ALTER TABLE `usuarios`
@@ -325,13 +360,13 @@ ALTER TABLE `notificaciones_evento`
 -- AUTO_INCREMENT de la tabla `perfiles_organizadores`
 --
 ALTER TABLE `perfiles_organizadores`
-  MODIFY `idPerfilOrganizador` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `idPerfilOrganizador` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `perfiles_runners`
 --
 ALTER TABLE `perfiles_runners`
-  MODIFY `idPerfilRunner` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `idPerfilRunner` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT de la tabla `puntosinteres`
@@ -352,10 +387,16 @@ ALTER TABLE `rutas`
   MODIFY `idRuta` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT de la tabla `tokens_recuperacion`
+--
+ALTER TABLE `tokens_recuperacion`
+  MODIFY `idToken` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT de la tabla `usuarios`
 --
 ALTER TABLE `usuarios`
-  MODIFY `idUsuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `idUsuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- Restricciones para tablas volcadas
@@ -415,6 +456,12 @@ ALTER TABLE `resultados`
 --
 ALTER TABLE `rutas`
   ADD CONSTRAINT `rutas_ibfk_1` FOREIGN KEY (`idEvento`) REFERENCES `eventos` (`idEvento`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `tokens_recuperacion`
+--
+ALTER TABLE `tokens_recuperacion`
+  ADD CONSTRAINT `fk_tokens_usuarios` FOREIGN KEY (`idUsuario`) REFERENCES `usuarios` (`idUsuario`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

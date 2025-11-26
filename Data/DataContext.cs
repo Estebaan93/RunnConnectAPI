@@ -21,6 +21,8 @@ namespace RunnConnectAPI.Data
     public DbSet<PuntoInteres> PuntosInteres { get; set; }
     public DbSet<NotificacionEvento> NotificacionesEvento { get; set; }
 
+    //Recuperar cuenta
+    public DbSet<TokenRecuperacion> TokenRecuperacion {get;set;}
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

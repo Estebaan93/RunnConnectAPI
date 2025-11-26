@@ -31,10 +31,12 @@ builder.Services.AddDbContext<RunnersContext>(options =>
 builder.Services.AddScoped<JWTService>();
 builder.Services.AddScoped<PasswordService>();
 builder.Services.AddScoped<FileService>();
+builder.Services.AddScoped<EmailService>();
 
 //Repos
 builder.Services.AddScoped<UsuarioRepositorio>();
 builder.Services.AddScoped<EventoRepositorio>();
+builder.Services.AddScoped<TokenRecuperacionRepositorio>();
 
 //CORS (Para que la app se pueda conectar)
 builder.Services.AddCors(options =>
