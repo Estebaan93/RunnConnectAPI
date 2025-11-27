@@ -21,6 +21,11 @@ namespace RunnConnectAPI.Models
     public string Token { get; set; } = string.Empty;
 
     [Required]
+    [StringLength(20)]
+    [Column("tipoToken")]
+    public string TipoToken {get;set;}="recuperacion"; //Por defecto o puede ser reactivacion se es por la cuenta
+
+    [Required]
     [Column("fechaCreacion")]
     public DateTime FechaCreacion { get; set; } = DateTime.Now;
 
@@ -31,7 +36,7 @@ namespace RunnConnectAPI.Models
     [Column("usado", TypeName = "tinyint(1)")]
     public bool Usado { get; set; } = false;
 
-    // Navegación
+    // Navegacion
     [ForeignKey("IdUsuario")]
     public virtual Usuario? Usuario { get; set; }
   }

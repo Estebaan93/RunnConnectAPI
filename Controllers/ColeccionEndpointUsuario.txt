@@ -79,15 +79,15 @@ GESTION DE PERFIL (3)
 
 GESTION DE AVATAR (2)
 1. PUT /Avatar - Subir/cambiar avatar - Aplica a ambos perfiles runner/organizador
-  autenticacion: token bearer
-  content-type: multipart/form-data
-  form:
-    Imagen: [archivo imagen] - hasta 20 MB - ".jpg", ".jpeg", ".png", ".gif", ".webp"
+   autenticacion: token bearer
+   content-type: multipart/form-data
+   form:
+     Imagen: [archivo imagen] - hasta 20 MB - ".jpg", ".jpeg", ".png", ".gif", ".webp"
 
 
 2. DELETE /Avatar - Restaurar avatar por defecto - Eliminar el avatarImg
-  autenticacion: token bearer
-  content-type:
+    autenticacion: token bearer
+    content-type:
 
 
 GESTION DE CONTRASEÑA (3)
@@ -129,8 +129,28 @@ Para el AppSetting contraseña de recuperacion: nodl kkvx mfmm nevk
 
 
 
-GESTION DE CUENTA (1)
-DELETE /Perfil - Eliminar cuenta (borrado logico)
+GESTION DE CUENTA (3)
+1. DELETE /Perfil - Eliminar cuenta (borrado logico)
    autenticacion: token bearer
    content-type: application/json
-   
+
+
+2. POST /SolicitarReactivacion - Solicita reactivacion via email (enviando un token valido por 1 hora, unico uso y valido solo para reactivacion) - PASO 1
+    autenticacion: 
+    content-type: application/json
+    body:
+     json
+      {
+        "email":"esteban.dev22@gmail.com", // Cuenta desactivada
+        "password":"123456"                // Contraseña de la cuenta desactivada
+     }
+
+
+3. POST /ReactivarCuenta - Reactiva la cuenta con el token que se recibe via email - PASO 2
+    autenticacion:
+    content-type: application/json
+    body:
+     json
+      {
+        "token":"TOKEN QUE SE RECIBE AL EMAIL REACTIVACION"
+      }

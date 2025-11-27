@@ -12,16 +12,16 @@ namespace RunnConnectAPI.Repositories
 
     public UsuarioRepositorio(RunnersContext context) //Constructor e inyectamos el DbContext por dependencias
     {
-      _context= context;
+      _context = context;
     }
     /*Consultas para usuarios*/
     //Obtenemos usuario por ID(clave primaria)
     public async Task<Usuario?> GetByIdAsync(int id)
     {
       return await _context.Usuarios //Busca por PK y que esten activos
-          .Include(u=>u.PerfilRunner)
-          .Include(u=>u.PerfilOrganizador)
-          .FirstOrDefaultAsync(u=>u.IdUsuario==id&&u.Estado);
+          .Include(u => u.PerfilRunner)
+          .Include(u => u.PerfilOrganizador)
+          .FirstOrDefaultAsync(u => u.IdUsuario == id && u.Estado);
     }
 
     //Obtener por email y que esten activos
@@ -36,19 +36,19 @@ namespace RunnConnectAPI.Repositories
     //Verificar si existe un email (solo activos runner/organizadores)
     public async Task<bool> EmailExistenteAsync(string email)
     {
-      return await _context.Usuarios.AnyAsync(u=> u.Email==email && u.Estado); //True si existe
-    } 
+      return await _context.Usuarios.AnyAsync(u => u.Email == email && u.Estado); //True si existe
+    }
 
     //Verificar si existe un DNI (solo activos y runner)
     public async Task<bool> DniExisteAsync(int dni)
     {
-      return await _context.PerfilesRunners.AnyAsync(u=>u.Dni==dni); //True si existe
+      return await _context.PerfilesRunners.AnyAsync(u => u.Dni == dni); //True si existe
     }
 
     /*Verficar si existe un CUIT (solo organizadores)*/
     public async Task<bool> CuitExisteAsync(string cuit)
     {
-      return await _context.PerfilesOrganizadores.AnyAsync(p=>p.CuitTaxId== cuit);
+      return await _context.PerfilesOrganizadores.AnyAsync(p => p.CuitTaxId == cuit);
     }
 
     /*Operacione CRUD*/
@@ -61,7 +61,7 @@ namespace RunnConnectAPI.Repositories
     }
 
     /*Crear perfil runner*/
-    public async Task<PerfilRunner>CreatePerfilRunnerAsync(PerfilRunner perfil)
+    public async Task<PerfilRunner> CreatePerfilRunnerAsync(PerfilRunner perfil)
     {
       _context.PerfilesRunners.Add(perfil);
       await _context.SaveChangesAsync();
@@ -69,7 +69,7 @@ namespace RunnConnectAPI.Repositories
     }
 
     /*Crear perfil organizador*/
-    public async Task<PerfilOrganizador>CreatePerfilOrganizadorAsync(PerfilOrganizador perfil)
+    public async Task<PerfilOrganizador> CreatePerfilOrganizadorAsync(PerfilOrganizador perfil)
     {
       _context.PerfilesOrganizadores.Add(perfil);
       await _context.SaveChangesAsync();
@@ -107,7 +107,7 @@ namespace RunnConnectAPI.Repositories
     //Eliminado logico
     public async Task DeleteLogicoAsync(Usuario usuario)
     {
-      usuario.Estado=false; //Pasa el estado a desactivado
+      usuario.Estado = false; //Pasa el estado a desactivado
       _context.Usuarios.Update(usuario);
       await _context.SaveChangesAsync();
     }
@@ -115,7 +115,27 @@ namespace RunnConnectAPI.Repositories
     //Verificar si existe un usuario (solo activo)
     public async Task<bool> ExisteAsync(int id)
     {
-      return await _context.Usuarios.AnyAsync(u=>u.IdUsuario==id && u.Estado); //True si existe
+      return await _context.Usuarios.AnyAsync(u => u.IdUsuario == id && u.Estado); //True si existe
+    }
+
+    //Obtener usuario sin filtro de estado (reactivar y recuperar )
+    public async Task<Usuario?> GetByEmailSinFiltroEstadoAsync(string email)
+    {
+      return await _context.Usuarios
+          .Include(u => u.PerfilRunner)
+          .Include(u => u.PerfilOrganizador)
+          .FirstOrDefaultAsync(u => u.Email == email);
+
+    }
+
+    // Obtener usuario SIN filtro de estado por ID (para reactivacion)
+    public async Task<Usuario?> GetByIdSinFiltroEstadoAsync(int id)
+    {
+      return await _context.Usuarios
+          .Include(u => u.PerfilRunner)
+          .Include(u => u.PerfilOrganizador)
+          .FirstOrDefaultAsync(u => u.IdUsuario == id);
+      // Sin && u.Estado para poder encontrar cuentas desactivadas
     }
 
   }
