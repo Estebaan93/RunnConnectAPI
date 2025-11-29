@@ -21,7 +21,7 @@ namespace RunnConnectAPI.Services
     {
       return tipoUsuario.ToLower() switch
       {
-        "organizador"=>"/uploads/avatars/defaults/default_organization.png",
+        "organizador" => "/uploads/avatars/defaults/default_organization.png",
         "runner" => "/uploads/avatars/defaults/default_runner.png",
         _ => "/uploads/avatars/defaults/default_runner.png" // Por defecto, runner
       };
@@ -32,7 +32,7 @@ namespace RunnConnectAPI.Services
     public async Task<string> GuardarAvatarAsync(IFormFile archivo, int idUsuario)
     {
       if (!ValidarImagen(archivo))
-        throw new Exception("Archivo de imagen invalido");  
+        throw new Exception("Archivo de imagen invalido");
 
       // Validar extension
       var extensionesPermitidas = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
@@ -69,15 +69,15 @@ namespace RunnConnectAPI.Services
     public async Task<string> GuardarAvatarRegistroAsync(IFormFile? archivo, int idUsuario, string tipoUsuario)
     {
       //Si no hay archivo retorna avatar por defecto
-      if(archivo==null || archivo.Length==0)
-      {  
+      if (archivo == null || archivo.Length == 0)
+      {
         return ObtenerAvatarPorDefecto(tipoUsuario);
       }
 
       //Si hay archivo, guardar
       return await GuardarAvatarAsync(archivo, idUsuario);
     }
-  
+
     /// Elimina un avatar del servidor (solo si no e avatar por defecto)
     public bool EliminarAvatar(string urlRelativa)
     {
@@ -87,11 +87,11 @@ namespace RunnConnectAPI.Services
           return false;
 
         //No elimino URLs externas
-        if(urlRelativa.StartsWith("http://") || urlRelativa.StartsWith("https://"))
+        if (urlRelativa.StartsWith("http://") || urlRelativa.StartsWith("https://"))
           return false;
 
         //No eliminar avatares por defecto
-        if(EsAvatarPorDefecto(urlRelativa))
+        if (EsAvatarPorDefecto(urlRelativa))
           return false;
 
         // Convertir URL relativa a ruta fisica
@@ -131,7 +131,7 @@ namespace RunnConnectAPI.Services
     /*Verificar si una URL es un avatar por defecto*/
     public bool EsAvatarPorDefecto(string? urlAvatar)
     {
-      if(string.IsNullOrEmpty(urlAvatar))
+      if (string.IsNullOrEmpty(urlAvatar))
         return false;
 
       return urlAvatar.Contains("/defaults/");
@@ -139,7 +139,7 @@ namespace RunnConnectAPI.Services
 
     /// Valida que una imagen sea valida
     public bool ValidarImagen(IFormFile archivo)
-        {
+    {
       try
       {
         var extensionesPermitidas = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
@@ -186,10 +186,47 @@ namespace RunnConnectAPI.Services
       }
     }
 
+    /*wwwtoor/uploads/comprobantes/ -Guarda comprobantes de pasgos-*/
+    /*Guardar el comprobante de pago y retornar la ruta relativa*/
+    public async Task<string> GuardarComprobanteAsync(IFormFile archivo, int idInscripcion)
+    {
+      // Validar archivo
+      if (archivo == null || archivo.Length == 0)
+        throw new Exception("Archivo inválido");
+
+      // Validar extensiin
+      var extensionesPermitidas = new[] { ".jpg", ".jpeg", ".png", ".pdf" };
+      var extension = Path.GetExtension(archivo.FileName).ToLowerInvariant();
+
+      if (!extensionesPermitidas.Contains(extension))
+        throw new Exception("Formato no permitido. Use: jpg, jpeg, png o pdf");
+
+      // Validar tamaño (máximo 5MB)
+      if (archivo.Length > 5 * 1024 * 1024)
+        throw new Exception("El archivo no puede superar 5MB");
+
+      // Crear carpeta si no existe
+      var carpetaComprobantes = Path.Combine(_environment.WebRootPath, "uploads", "comprobantes");
+      if (!Directory.Exists(carpetaComprobantes))
+        Directory.CreateDirectory(carpetaComprobantes);
+
+      // Generar nombre unico: comprobante_idInscripcion_timestamp.extension
+      var nombreArchivo = $"comprobante_{idInscripcion}_{DateTime.Now:yyyyMMddHHmmss}{extension}";
+      var rutaCompleta = Path.Combine(carpetaComprobantes, nombreArchivo);
+
+      // Guardar archivo
+      using (var stream = new FileStream(rutaCompleta, FileMode.Create))
+      {
+        await archivo.CopyToAsync(stream);
+      }
+
+      // Retornar URL relativa
+      return $"/uploads/comprobantes/{nombreArchivo}";
+    }
 
 
 
 
 
-  } 
+  }
 }

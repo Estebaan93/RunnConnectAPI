@@ -5,9 +5,10 @@ using System.ComponentModel.DataAnnotations;
 namespace RunnConnectAPI.Models.Dto.Evento
 {
   /* DTO para cambiar el estado de un evento
-  Estados validos: "publicado", "cancelado", "finalizado"*/
+  Estados validos: "publicado", "cancelado", "finalizado"
+  PUT: api/Evento/{id}/Estado */
 
-  public class CambiarEstadoRequest
+  public class CambiarEstadoEventoRequest
   {
     [Required(ErrorMessage = "El nuevo estado es obligatorio")]
     [RegularExpression("^(publicado|cancelado|finalizado)$", 

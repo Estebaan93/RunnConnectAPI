@@ -1,6 +1,7 @@
 //Models/Inscripcion
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace RunnConnectAPI.Models
 {
@@ -27,11 +28,26 @@ namespace RunnConnectAPI.Models
     /*Ver disponibilidad del evento y ver si el evento entrega las remeras*/
 
     [Required]
-    [Column(TypeName="tinnyint(1)")]
+    [Column(TypeName="tinyint(1)")]
     public bool AceptoDeslinde {get; set;}= false;
 
     [StringLength(255)]
     public string? ComprobantePagoURL {get;set;}
+
+
+    /*Navegacion*/
+   [ForeignKey("IdUsuario")]
+    [JsonIgnore]
+    public Usuario? Usuario { get; set; }
+
+    [ForeignKey("IdCategoria")]
+    [JsonIgnore]
+    public CategoriaEvento? Categoria { get; set; }
+
+    // Resultado de esta inscripcion (1:1)
+    [JsonIgnore]
+    public Resultado? Resultado { get; set; } 
+
 
   }
 }

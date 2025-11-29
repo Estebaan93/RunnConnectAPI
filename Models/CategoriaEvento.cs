@@ -1,6 +1,7 @@
 //Models/CategoriaEvento
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace RunnConnectAPI.Models
 {
@@ -35,6 +36,16 @@ namespace RunnConnectAPI.Models
     [Column(TypeName="varchar(1)")] //F, M , X
     public string Genero {get;set;}= "X";
 
+
+    /*Navegacion*/
+    //Evento al que pertenece la categoria
+    [ForeignKey("IdEvento")]
+    [JsonIgnore]
+    public Evento? Evento{get;set;}
+
+    //Inscripciones a esta categoria
+    [JsonIgnore]
+    public ICollection<Inscripcion>? Inscripciones{get;set;}
 
   }
 }

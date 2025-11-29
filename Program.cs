@@ -37,6 +37,8 @@ builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<UsuarioRepositorio>();
 builder.Services.AddScoped<EventoRepositorio>();
 builder.Services.AddScoped<TokenRecuperacionRepositorio>();
+builder.Services.AddScoped<CategoriaRepositorio>();
+builder.Services.AddScoped<InscripcionRepositorio>();
 
 //CORS (Para que la app se pueda conectar)
 builder.Services.AddCors(options =>
