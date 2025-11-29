@@ -27,11 +27,13 @@ builder.Services.AddDbContext<RunnersContext>(options =>
     )
 );
 
+
 //Registrar JWTService para inyeccion de dependencias
 builder.Services.AddScoped<JWTService>();
 builder.Services.AddScoped<PasswordService>();
 builder.Services.AddScoped<FileService>();
 builder.Services.AddScoped<EmailService>();
+
 
 //Repos
 builder.Services.AddScoped<UsuarioRepositorio>();
@@ -41,6 +43,8 @@ builder.Services.AddScoped<CategoriaRepositorio>();
 builder.Services.AddScoped<InscripcionRepositorio>();
 builder.Services.AddScoped<ResultadoRepositorio>();
 builder.Services.AddScoped<NotificacionRepositorio>();
+builder.Services.AddScoped<RutaRepositorio>();
+
 
 
 //CORS (Para que la app se pueda conectar)
