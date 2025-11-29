@@ -4,53 +4,81 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace RunnConnectAPI.Models
 {
-  [Table("resultado")]
+
+  /// Resultados de una carrera - Se crea DESPUES del evento
+  /// Relación 1:1 con Inscripcion (UNIQUE en idInscripcion)
+  [Table("resultados")]
   public class Resultado
   {
-   [Key]
-   public int IdResultado {get;set;}   
+    [Key]
+    [Column("idResultado")]
+    public int IdResultado { get; set; }
 
-   [Required]
-   public int IdInscripcion{get;set;} 
+    [Required]
+    [Column("idInscripcion")]
+    public int IdInscripcion { get; set; }
 
-   //Estos campos se cargan por el organizador (post-evento)
-   [StringLength(20)]
-   [RegularExpression(@"^\d{2}:\d{2}:\d{2}(\.\d{1,3})?$", ErrorMessage ="El formato de tiempo es invalido (HH:MM:SS.mm.)")]
-   public string? TiempoOficial {get;set;} 
+   
+    // CAMPOS CARGADOS POR EL ORGANIZADOR (post-evento)
 
-  [Range(1,10000, ErrorMessage ="La posicion general debe ser mayor a 0")]
-   public int? PosicionGeneral {get;set;}
+    /// Tiempo oficial de la carrera. Ej: "00:45:30.123"
+    /// Nullable porque se carga después del evento
+    [Column("tiempoOficial")]
+    [StringLength(20)]
+    public string? TiempoOficial { get; set; }
 
-  [Range(1,10000, ErrorMessage ="La posicion categoria debe ser mayor a 0")]
-   public int? PosicionCategoria {get;set;}
+    /// Posicion general en toda la carrera
+    [Column("posicionGeneral")]
+    public int? PosicionGeneral { get; set; }
+
+    /// Posicion dentro de su categoria
+    [Column("posicionCategoria")]
+    public int? PosicionCategoria { get; set; }
 
 
-  //Datos anexados por el runner (con su smartwatch)
-  [StringLength(20)]
-  [RegularExpression(@"^\d{2}:\d{2}:\d{2}(\.\d{1,3})?$", ErrorMessage = "Formato de tiempo invalido (HH:MM:SS.mmm)")]
-   public string? TiempoSmartWatch {get;set;}
+    // CAMPOS CARGADOS POR EL RUNNER (datos de smartwatch/Google Fit)
 
-  [Column(TypeName = "decimal(6,2)")]
-  [Range(0, 999.99, ErrorMessage = "La distancia debe estar entre 0 y 999.99 km")]
-   public decimal? DistanciaKm {get;set;}
+    /// Tiempo registrado por smartwatch. Ej: "00:45:28"
+    [Column("tiempoSmartwatch")]
+    [StringLength(20)]
+    public string? TiempoSmartwatch { get; set; }
 
-  [StringLength(20)]
-   public string? RitmoPromedio {get;set;}     
+    /// Distancia recorrida en kilometros. Ej: 10.02
+    [Column("distanciaKm", TypeName = "decimal(6,2)")]
+    public decimal? DistanciaKm { get; set; }
 
-  [StringLength(20)]
-   public string? VelocidadPromedio {get;set;}
 
-  [Range(0, 10000, ErrorMessage = "Las calorias deben estar entre 0 y 10000")]
-   public int? CaloriasQuemadas {get;set;}
+    /// Ritmo promedio. Ej: "4:32 min/km"
+    [Column("ritmoPromedio")]
+    [StringLength(20)]
+    public string? RitmoPromedio { get; set; }
 
-  [Range(30, 250, ErrorMessage = "Las pulsaciones promedio deben estar entre 30 y 250")]
-   public int? PulsacionesPromedio {get;set;}
 
-  [Range(30, 250, ErrorMessage = "Las pulsaciones maximas deben estar entre 30 y 250")]
-   public int? PulsacionesMax {get;set;} 
+    /// Velocidad promedio. Ej: "13.2 km/h"
+    [Column("velocidadPromedio")]
+    [StringLength(20)]
+    public string? VelocidadPromedio { get; set; }
+
+    /// Calorías quemadas durante la carrera
+    [Column("caloriasQuemadas")]
+    public int? CaloriasQuemadas { get; set; }
+
+    /// Pulsaciones promedio durante la carrera
+    [Column("pulsacionesPromedio")]
+    public int? PulsacionesPromedio { get; set; }
+
+    /// Pulsaciones maximas durante la carrera
+    [Column("pulsacionesMax")]
+    public int? PulsacionesMax { get; set; }
+
+
+    // NAVEGACION
+    [ForeignKey("IdInscripcion")]
+    public virtual Inscripcion? Inscripcion { get; set; }
+  }
+
 
 
 
   
-  }
 }
