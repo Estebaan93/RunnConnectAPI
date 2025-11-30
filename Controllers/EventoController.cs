@@ -115,18 +115,18 @@ namespace RunnConnectAPI.Controllers
     GET: api/Evento/{id}*/
     [AllowAnonymous]
     [HttpGet("{id}")]
-    public async Task<IActionResult> ObtenerEventosPorId(int idEvento)
+    public async Task<IActionResult> ObtenerEventosPorId(int id)
     {
       try
       {
-        var evento = await _eventoRepositorio.ObtenerPorIdConDetalleAsync(idEvento);
+        var evento = await _eventoRepositorio.ObtenerPorIdConDetalleAsync(id);
 
         if (evento == null)
           return NotFound(new { message = "Evento no encontrado" });
 
         //obtener inscriptos por categoria para mostar en el detalle
-        var inscriptosTotal = await _eventoRepositorio.ContarInscriptosAsync(idEvento);
-        var inscriptosPorCategoria= await _categoriaRepositorio.ObtenerInscriptosPorCategoriaAsync(idEvento);
+        var inscriptosTotal = await _eventoRepositorio.ContarInscriptosAsync(id);
+        var inscriptosPorCategoria= await _categoriaRepositorio.ObtenerInscriptosPorCategoriaAsync(id);
 
         var response = new EventoDetalleResponse
         {
@@ -206,7 +206,8 @@ namespace RunnConnectAPI.Controllers
             FechaHora = e.FechaHora,
             Lugar = e.Lugar,
             Estado = e.Estado,
-            CupoTotal = e.CupoTotal
+            CupoTotal = e.CupoTotal,
+            NombreOrganizador= e.Organizador?.Nombre ??""
           })
         });
       }
@@ -335,7 +336,9 @@ namespace RunnConnectAPI.Controllers
             Nombre = evento.Nombre,
             FechaHora = evento.FechaHora,
             Lugar = evento.Lugar,
-            Estado = evento.Estado
+            Estado = evento.Estado,
+            CupoTotal= evento.CupoTotal,
+            NombreOrganizador= evento.Organizador?.Nombre ??""
           }
         });
       }

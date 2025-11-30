@@ -67,6 +67,7 @@ namespace RunnConnectAPI.Repositories
     public async Task<List<Evento>> ObtenerTodosPorOrganizadorAsync(int idOrganizador)
     {
       return await _context.Eventos
+          .Include(e=>e.Organizador)
           .Where(e => e.IdOrganizador == idOrganizador)
           .OrderByDescending(e => e.FechaHora)
           .ToListAsync();

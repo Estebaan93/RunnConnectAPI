@@ -1,0 +1,88 @@
+Post Login - http://localhost:5213/api
+
+ORGANIZADOR (4):
+1. POST  /Evento - Crea un evento, el perfil del orga debe estar completo para crear el evento
+Authorizacion: token bearer (organizador) evalua que sea token de organizador
+Content-Type: application/json
+  Body:
+    json
+      {
+        "nombre": "Maratón San Luis 2025",
+        "descripcion": "Carrera de 10K y 5K por las calles de San Luis",
+        "fechaHora": "2026-01-15T08:00:00",
+        "lugar": "Plaza Pringles, San Luis",
+        "cupoTotal": 500,
+        "urlPronosticoClima": "https://www.weather.com/sanluisargentina",
+        "datosPago": "CBU: 0000003100012345678901 - Alias: RUNNERS.SL - Titular: Runners Club San Luis S.A"
+      }
+
+2. GET /MisEventos - Ver mis eventos (todos los estados) de un organizador
+Authorizacion: token bearer (organizador) evalua que sea token de organizador
+Content-Type: application/json
+Request: 
+  json 
+    {
+  "total": 1,
+  "eventos": [
+    {
+      "idEvento": 1,
+      "nombre": "Maratón San Luis 2025",
+      "fechaHora": "2026-01-15T08:00:00",
+      "lugar": "Plaza Pringles, San Luis",
+      "estado": "publicado",
+      "cupoTotal": 500,
+      "inscriptosActuales": 0,
+      "cantidadCategorias": 0,
+      "nombreOrganizador": "" --- Revisar no me trae el nombre y/o razon social organizador
+    }
+  ]
+}
+
+    
+
+
+3. PUT /{id} - Actualizar un evento - Si esta cancelado y/o finalizado no se puede editar
+Authorizacion: token bearer (organizador) evalua que sea token de organizador
+Content-Type: application/json
+Body:
+  json
+    {
+      "nombre": "Maratón San Luis 2025 - ACTUALIZADO",
+      "descripcion": "Carrera de 10K y 5K - Descripción actualizada",
+      "fechaHora": "2025-03-15T09:00:00",
+      "lugar": "Plaza Pringles, San Luis Capital",
+      "cupoTotal": 600,
+      "urlPronosticoClima": "https://www.weather.com/sanluisargentina",
+      "datosPago": "CBU: 0000003100012345678901 - Alias: RUNNERS.SL.2025"  
+    }
+
+4. PUT /{id}/CambiarEstado - Cambiar estado a (publicado/cancelado/finalizado)
+Authorizacion: token bearer (organizador) evalua que sea token de organizador
+Content-Type: application/json
+Body:
+  json
+    {
+      "nuevoEstado": "cancelado",
+      "motivo": "Evento de prueba - cancelacion para testing"  
+    }
+
+
+
+PUBLICOS(3):
+1. GET /Publicados - Listar eventos publicados y futuros para los runners (en la app una seccion del login se puede mostrar los proximos eventos sin loguearse y/o registrarse)
+Authorizacion: publico
+
+2. GET /Buscar - Buscar eventos con filtros y paginacion
+Authorizacion: publico
+query params: 
+      ?nombre=Maraton
+     &lugar=San Luis
+     &fechaDesde=2025-01-01
+     &fechaHasta=2025-12-31
+     &estado=publicado
+     &idOrganizador=3
+     &pagina=1
+     &tamanioPagina=10
+
+3. GET /{id} - Ver detalle de un evento
+Authorizacion: publico
