@@ -20,6 +20,7 @@ namespace RunnConnectAPI.Repositories
     public async Task<List<Evento>> ObtenerEventosPublicadosAsync()
     {
       return await _context.Eventos
+          .Include(e=>e.Organizador)
           .Where(e => e.Estado == "publicado" && e.FechaHora >= DateTime.Now)
           .OrderBy(e => e.FechaHora)
           .ToListAsync();
@@ -68,6 +69,7 @@ namespace RunnConnectAPI.Repositories
     {
       return await _context.Eventos
           .Include(e=>e.Organizador)
+          .Include(e=>e.Categorias)
           .Where(e => e.IdOrganizador == idOrganizador)
           .OrderByDescending(e => e.FechaHora)
           .ToListAsync();

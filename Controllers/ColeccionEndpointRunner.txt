@@ -1,0 +1,23 @@
+INSCRIBIRSE A EVENTO:  REQUIERE PERFIL completo
+http://localhost:5213/api
+
+Inscripcion: (1)
+POST /Inscripcion
+Authorizacion: token bearer
+Content-Type: application/json
+Body:
+  json
+    {
+    "idCategoria": 1, 
+    "talleRemera": "L",
+    "aceptoDeslinde": true 
+    }
+
+
+Comprobante pago (1)
+PUT /Inscripcion/{id}/Comprobante
+Authorizacion: token bearer
+Content-Type: multipart/form-data
+Form
+  "Comprobante": "File archivo" - ".jpg", ".jpeg", ".png", ".pdf" - hasta 20 MB
+

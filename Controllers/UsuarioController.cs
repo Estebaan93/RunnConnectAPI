@@ -995,18 +995,18 @@ namespace RunnConnectAPI.Controllers
         if (usuario == null)
           return NotFound(new { message = "No existe un usuario con ese email" });
 
-        // 2. Verificar que la cuenta esté desactivada
+        // 2. Verificar que la cuenta este desactivada
         if (usuario.Estado)
-          return BadRequest(new { message = "Tu cuenta ya está activa. Puedes iniciar sesión normalmente" });
+          return BadRequest(new { message = "Tu cuenta ya esta activa. Puedes iniciar sesión normalmente" });
 
         // 3. Verificar password
         if (!_passwordService.VerifyPassword(dto.Password, usuario.PasswordHash))
           return Unauthorized(new { message = "Credenciales inválidas" });
 
-        // 4. Generar token único para reactivación
+        // 4. Generar token unico para reactivación
         var token = Guid.NewGuid().ToString("N");
 
-        // 5. Crear registro de token (válido por 1 hora)
+        // 5. Crear registro de token (valido por 1 hora)
         var tokenReactivacion = new TokenRecuperacion
         {
           IdUsuario = usuario.IdUsuario,
@@ -1020,7 +1020,7 @@ namespace RunnConnectAPI.Controllers
         // 6. Guardar token en BD
         await _tokenRecuperacionRepositorio.CrearAsync(tokenReactivacion);
 
-        // 7. Enviar email con link de reactivación
+        // 7. Enviar email con link de reactivacion
         var emailEnviado = await _emailService.EnviarEmailReactivacionAsync(
           usuario.Email,
           usuario.Nombre,
@@ -1035,7 +1035,7 @@ namespace RunnConnectAPI.Controllers
           return StatusCode(500, new { message = "Error al enviar el email. Intenta nuevamente" });
         }
 
-        // 8. Retornar éxito
+        // 8. Retornar exito
         return Ok(new
         {
           message = "Se ha enviado un email con instrucciones para reactivar tu cuenta",

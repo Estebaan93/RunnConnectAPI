@@ -207,6 +207,7 @@ namespace RunnConnectAPI.Controllers
             Lugar = e.Lugar,
             Estado = e.Estado,
             CupoTotal = e.CupoTotal,
+            CantidadCategorias=e.Categorias?.Count ?? 0,
             NombreOrganizador= e.Organizador?.Nombre ??""
           })
         });

@@ -274,7 +274,7 @@ namespace RunnConnectAPI.Controllers
         if (!extensionesPermitidas.Contains(extension))
           return BadRequest(new { message = "Solo se permiten archivos JPG, PNG o PDF" });
 
-        if (request.Comprobante.Length > 5 * 1024 * 1024) // 5MB maximo
+        if (request.Comprobante.Length > 10 * 1024 * 1024) // 10MB maximo
           return BadRequest(new { message = "El archivo no puede exceder 5MB" });
 
         // Guardar archivo
