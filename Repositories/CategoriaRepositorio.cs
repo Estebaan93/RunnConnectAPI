@@ -129,7 +129,7 @@ namespace RunnConnectAPI.Repositories
     public async Task<int> ContarInscriptosAsync(int idCategoria)
     {
       return await _context.Inscripciones
-          .CountAsync(i => i.IdCategoria == idCategoria && i.EstadoPago == "confirmado");
+          .CountAsync(i => i.IdCategoria == idCategoria && i.EstadoPago == "pagado");
     }
 
     /// Verifica si hay cupo disponible en la categoría

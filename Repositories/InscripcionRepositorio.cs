@@ -33,7 +33,7 @@ namespace RunnConnectAPI.Repositories
     // Obtiene inscripciones activas (pendiente o confirmado) de un runner
     public async Task<List<Inscripcion>> ObtenerActivasPorRunnerAsync(int idUsuario)
     {
-      var estadosActivos = new[] { "pendiente", "confirmado" };
+      var estadosActivos = new[] { "pendiente", "procesando", "pagado" };
 
       return await _context.Inscripciones
           .Include(i => i.Categoria)
@@ -54,15 +54,17 @@ namespace RunnConnectAPI.Repositories
           .FirstOrDefaultAsync(i => i.IdInscripcion == idInscripcion);
     }
 
- 
+
     // Verifica si un runner ya esta inscripto en una categoria
-    public async Task<bool> ExisteInscripcionAsync(int idUsuario, int idCategoria)
+    public async Task<bool> ExisteInscripcionAsync(int idUsuario, int idEvento)
     {
-      var estadosActivos = new[] { "pendiente", "confirmado" };
+      var estadosActivos = new[] { "pendiente", "procesando", "pagado" };
 
       return await _context.Inscripciones
+          .Include(i => i.Categoria)
           .AnyAsync(i => i.IdUsuario == idUsuario
-              && i.IdCategoria == idCategoria
+              && i.Categoria != null
+              && i.Categoria.IdEvento == idEvento
               && estadosActivos.Contains(i.EstadoPago));
     }
 
@@ -70,7 +72,7 @@ namespace RunnConnectAPI.Repositories
     /// Verifica si un runner ya esta inscripto en el mismo evento (cualquier categoria)
     public async Task<bool> ExisteInscripcionEnEventoAsync(int idUsuario, int idEvento)
     {
-      var estadosActivos = new[] { "pendiente", "confirmado" };
+      var estadosActivos = new[] { "pendiente", "procesando", "pagado" };
 
       return await _context.Inscripciones
           .Include(i => i.Categoria)
@@ -159,7 +161,7 @@ namespace RunnConnectAPI.Repositories
     public async Task<Inscripcion> CrearAsync(Inscripcion inscripcion)
     {
       inscripcion.FechaInscripcion = DateTime.Now;
-      inscripcion.EstadoPago = "pendiente";
+      inscripcion.EstadoPago = "pendiente"; //Estado inicial
       inscripcion.TalleRemera = inscripcion.TalleRemera?.ToUpper().Trim();
 
       _context.Inscripciones.Add(inscripcion);
@@ -172,7 +174,7 @@ namespace RunnConnectAPI.Repositories
     public async Task ActualizarAsync(Inscripcion inscripcion)
     {
       inscripcion.TalleRemera = inscripcion.TalleRemera?.ToUpper().Trim();
-      
+
       _context.Inscripciones.Update(inscripcion);
       await _context.SaveChangesAsync();
     }
@@ -187,7 +189,7 @@ namespace RunnConnectAPI.Repositories
 
       nuevoEstado = nuevoEstado.ToLower().Trim();
 
-      var estadosValidos = new[] { "pendiente", "confirmado", "rechazado", "cancelado", "reembolsado" };
+      var estadosValidos = new[] { "pendiente", "procesando", "pagado", "rechazado", "reembolsado", "cancelado" };
       if (!estadosValidos.Contains(nuevoEstado))
         throw new ArgumentException($"Estado inválido. Estados válidos: {string.Join(", ", estadosValidos)}");
 
@@ -199,13 +201,22 @@ namespace RunnConnectAPI.Repositories
     }
 
     /// Actualiza la URL del comprobante de pago
-    public async Task ActualizarComprobanteAsync(int idInscripcion, string urlComprobante)
+    public async Task ActualizarComprobanteYEstadoAsync(int idInscripcion, string urlComprobante, string nuevoEstado)
     {
       var inscripcion = await _context.Inscripciones.FindAsync(idInscripcion);
 
       if (inscripcion == null)
         throw new KeyNotFoundException("Inscripción no encontrada");
 
+      nuevoEstado = nuevoEstado.ToLower().Trim();
+
+
+      // Validar transición: Solo se puede pasar a 'procesando' desde 'pendiente'
+      if (inscripcion.EstadoPago != "pendiente" && nuevoEstado == "procesando")
+        throw new InvalidOperationException("Solo se puede pasar a procesamiento de pago desde el estado pendiente");
+
+
+      inscripcion.EstadoPago = nuevoEstado;
       inscripcion.ComprobantePagoURL = urlComprobante;
       await _context.SaveChangesAsync();
     }
@@ -215,21 +226,40 @@ namespace RunnConnectAPI.Repositories
     // Valida las reglas de transicion de estado
     private void ValidarTransicionEstado(string estadoActual, string nuevoEstado)
     {
-      // No se puede modificar una inscripcion cancelada
-      if (estadoActual == "cancelado")
-        throw new InvalidOperationException("No se puede modificar una inscripción cancelada");
+      // 1. Estados Finales Inmutables (Excepto pagado -> reembolsado)
+      if (estadoActual == "rechazado" || estadoActual == "reembolsado" || estadoActual == "cancelado")
+        throw new InvalidOperationException($"No se puede modificar una inscripción en estado {estadoActual}.");
 
-      // No se puede modificar una inscripcion reembolsada
-      if (estadoActual == "reembolsado")
-        throw new InvalidOperationException("No se puede modificar una inscripción reembolsada");
+      if (estadoActual == "pagado")
+      {
+        if (nuevoEstado != "reembolsado")
+          throw new InvalidOperationException("Solo se permite el reembolso desde el estado PAGADO.");
+      }
 
-      // Solo se puede cancelar si esta pendiente
-      if (nuevoEstado == "cancelado" && estadoActual != "pendiente")
-        throw new InvalidOperationException("Solo se pueden cancelar inscripciones pendientes");
+      // 2. Lógica para CANCELADO (Runner)
+      if (nuevoEstado == "cancelado")
+      {
+        if (estadoActual != "pendiente" && estadoActual != "procesando")
+          throw new InvalidOperationException("Solo se pueden cancelar inscripciones pendientes o en procesamiento.");
+      }
 
-      // Solo se puede reembolsar si está confirmado
-      if (nuevoEstado == "reembolsado" && estadoActual != "confirmado")
-        throw new InvalidOperationException("Solo se pueden reembolsar inscripciones confirmadas");
+      // 3. Lógica para RECHAZADO (Organizador - Pago fallido)
+      if (nuevoEstado == "rechazado")
+      {
+        if (estadoActual != "pendiente" && estadoActual != "procesando")
+          throw new InvalidOperationException("Solo se pueden rechazar inscripciones pendientes o en procesamiento.");
+      }
+
+      // 4. Lógica para PAGADO (Organizador - Éxito)
+      if (nuevoEstado == "pagado")
+      {
+        if (estadoActual != "procesando")
+          throw new InvalidOperationException("El pago debe estar en PROCESANDO para ser marcado como PAGADO.");
+      }
+
+      // 5. Lógica para REEMBOLSO
+      if (nuevoEstado == "reembolsado" && estadoActual != "pagado")
+        throw new InvalidOperationException("Solo se pueden reembolsar inscripciones que ya están pagadas.");
     }
 
     /// Verifica si el runner cumple con los requisitos de la categoria (edad y género)
@@ -316,7 +346,7 @@ namespace RunnConnectAPI.Repositories
       return (faltantes.Count == 0, faltantes);
     }
 
-  
+
     // Estadisticas
 
     /// Cuenta inscripciones por estado en un evento
@@ -333,14 +363,14 @@ namespace RunnConnectAPI.Repositories
     }
 
     /// Cuenta inscripciones confirmadas en un evento
-    public async Task<int> ContarConfirmadosEnEventoAsync(int idEvento)
+    public async Task<int> ContarPagadosEnEventoAsync(int idEvento)
     {
       return await _context.Inscripciones
           .Include(i => i.Categoria)
           .CountAsync(i => i.Categoria != null
               && i.Categoria.IdEvento == idEvento
-              && i.EstadoPago == "confirmado");
+              && i.EstadoPago == "pagado");
     }
 
-  }  
+  }
 }

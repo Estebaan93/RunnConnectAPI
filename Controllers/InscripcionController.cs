@@ -280,12 +280,13 @@ namespace RunnConnectAPI.Controllers
         // Guardar archivo
         var urlComprobante = await _fileService.GuardarComprobanteAsync(request.Comprobante, id);
 
-        await _inscripcionRepositorio.ActualizarComprobanteAsync(id, urlComprobante);
+        await _inscripcionRepositorio.ActualizarComprobanteYEstadoAsync(id, urlComprobante, "procesando");
 
         return Ok(new
         {
-          message = "Comprobante subido exitosamente",
-          comprobantePagoURL = urlComprobante
+          message = "Comprobante subido exitosamente. El pago se esta procesando",
+          comprobantePagoURL = urlComprobante,
+          estadoPago = "procesando"
         });
       }
       catch (Exception ex)
@@ -313,15 +314,13 @@ namespace RunnConnectAPI.Controllers
         if (inscripcion.IdUsuario != validacion.userId)
           return Forbid();
 
-        if (inscripcion.EstadoPago != "pendiente")
-          return BadRequest(new { message = "Solo se pueden cancelar inscripciones pendientes de pago" });
-
         await _inscripcionRepositorio.CambiarEstadoPagoAsync(id, "cancelado");
 
         return Ok(new
         {
           message = "Inscripción cancelada exitosamente",
-          idInscripcion = id
+          idInscripcion = id,
+          estadoFinal = "cancelado"
         });
       }
       catch (InvalidOperationException ex)
@@ -373,7 +372,8 @@ namespace RunnConnectAPI.Controllers
           FechaInscripcion = i.FechaInscripcion,
           EstadoPago = i.EstadoPago,
           TalleRemera = i.TalleRemera,
-          ComprobantePagoURL = i.ComprobantePagoURL,
+          ComprobantePagoURL = !string.IsNullOrEmpty(i.ComprobantePagoURL)
+            ? _fileService.ObtenerUrlCompleta(i.ComprobantePagoURL, Request) : null,
           IdCategoria = i.IdCategoria,
           NombreCategoria = i.Categoria?.Nombre ?? "",
           Runner = i.Usuario != null ? new RunnerInscriptoInfo
@@ -420,39 +420,38 @@ namespace RunnConnectAPI.Controllers
     {
       try
       {
-        if (!ModelState.IsValid)
-          return BadRequest(ModelState);
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
         var validacion = ValidarOrganizador();
-        if (validacion.error != null)
-          return validacion.error;
+        if (validacion.error != null) return validacion.error;
 
         var inscripcion = await _inscripcionRepositorio.ObtenerPorIdAsync(id);
+        if (inscripcion == null) return NotFound(new { message = "Inscripción no encontrada" });
 
-        if (inscripcion == null)
-          return NotFound(new { message = "Inscripcion no encontrada" });
+        if (inscripcion.Categoria?.Evento?.IdOrganizador != validacion.userId) return Forbid();
 
-        // Verificar que el organizador es dueño del evento
-        if (inscripcion.Categoria?.Evento?.IdOrganizador != validacion.userId)
-          return Forbid();
-
-        if (inscripcion.EstadoPago != "pendiente")
-          return BadRequest(new { message = "Solo se puede confirmar/rechazar inscripciones pendientes" });
+        // Validar estado origen
+        if (inscripcion.EstadoPago != "procesando")
+          return BadRequest(new { message = "Solo se puede confirmar/rechazar pagos en estado PROCESANDO." });
 
         var estadoAnterior = inscripcion.EstadoPago;
+        string estadoFinal = request.NuevoEstado.ToLower();
 
-        await _inscripcionRepositorio.CambiarEstadoPagoAsync(id, request.NuevoEstado);
+        // Mapeo: Si el cliente manda 'confirmado', lo guardamos como 'pagado'
+        if (estadoFinal == "confirmado")
+        {
+          estadoFinal = "pagado";
+        }
 
-        //  Enviar notificacion al runner
-        // if (request.NuevoEstado == "confirmado")
-        //     await _notificacionService.NotificarPagoConfirmadoAsync(id);
+        // El repositorio validará si 'pagado' o 'rechazado' son transiciones válidas
+        await _inscripcionRepositorio.CambiarEstadoPagoAsync(id, estadoFinal);
 
         return Ok(new
         {
-          message = $"Estado de pago actualizado a '{request.NuevoEstado}'",
+          message = $"Estado de pago actualizado a '{estadoFinal}'",
           idInscripcion = id,
           estadoAnterior,
-          estadoNuevo = request.NuevoEstado,
+          estadoNuevo = estadoFinal,
           motivo = request.Motivo
         });
       }
@@ -474,25 +473,19 @@ namespace RunnConnectAPI.Controllers
       try
       {
         var validacion = ValidarOrganizador();
-        if (validacion.error != null)
-          return validacion.error;
+        if (validacion.error != null) return validacion.error;
 
         var inscripcion = await _inscripcionRepositorio.ObtenerPorIdAsync(id);
+        if (inscripcion == null) return NotFound(new { message = "Inscripción no encontrada" });
 
-        if (inscripcion == null)
-          return NotFound(new { message = "Inscripcion no encontrada" });
+        if (inscripcion.Categoria?.Evento?.IdOrganizador != validacion.userId) return Forbid();
 
-        if (inscripcion.Categoria?.Evento?.IdOrganizador != validacion.userId)
-          return Forbid();
-
-        if (inscripcion.EstadoPago != "confirmado")
-          return BadRequest(new { message = "Solo se pueden reembolsar inscripciones confirmadas" });
-
+        // La validación estricta (solo si es 'pagado') está en el repositorio
         await _inscripcionRepositorio.CambiarEstadoPagoAsync(id, "reembolsado");
 
         return Ok(new
         {
-          message = "Inscripcion marcada como reembolsada",
+          message = "Inscripción marcada como reembolsada",
           idInscripcion = id
         });
       }
