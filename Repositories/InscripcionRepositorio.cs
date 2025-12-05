@@ -233,14 +233,14 @@ namespace RunnConnectAPI.Repositories
       if (estadoActual == "pagado")
       {
         if (nuevoEstado != "reembolsado")
-          throw new InvalidOperationException("Solo se permite el reembolso desde el estado PAGADO.");
+          throw new InvalidOperationException("No se puede cancelar una inscripcion que ya esta PAGADA. Comunicate con el Organizador");
       }
 
       // 2. Lógica para CANCELADO (Runner)
       if (nuevoEstado == "cancelado")
       {
-        if (estadoActual != "pendiente" && estadoActual != "procesando")
-          throw new InvalidOperationException("Solo se pueden cancelar inscripciones pendientes o en procesamiento.");
+        if (estadoActual != "pendiente")
+          throw new InvalidOperationException("Solo se pueden cancelar inscripciones pendientes. Si ya enviaste el comprobante, debes esperar la respuesta del organizador");
       }
 
       // 3. Lógica para RECHAZADO (Organizador - Pago fallido)

@@ -275,7 +275,7 @@ namespace RunnConnectAPI.Controllers
           return BadRequest(new { message = "Solo se permiten archivos JPG, PNG o PDF" });
 
         if (request.Comprobante.Length > 10 * 1024 * 1024) // 10MB maximo
-          return BadRequest(new { message = "El archivo no puede exceder 5MB" });
+          return BadRequest(new { message = "El archivo no puede exceder 10MB" });
 
         // Guardar archivo
         var urlComprobante = await _fileService.GuardarComprobanteAsync(request.Comprobante, id);
@@ -314,6 +314,17 @@ namespace RunnConnectAPI.Controllers
         if (inscripcion.IdUsuario != validacion.userId)
           return Forbid();
 
+        if (inscripcion.EstadoPago == "procesando")
+        {
+          return BadRequest(new {message="Ya has enviado el comprobante. Por favor espera a que el organizador confirme o rechace tu pago para realizar cambios."});
+        }
+
+        if (inscripcion.EstadoPago == "pagado")
+        {
+          return BadRequest(new { message = "Tu inscripción ya está pagada. Si no puedes asistir, contacta al organizador para solicitar un reembolso." });
+        }
+
+        //Solo pasa si esta pendiente
         await _inscripcionRepositorio.CambiarEstadoPagoAsync(id, "cancelado");
 
         return Ok(new
@@ -437,13 +448,7 @@ namespace RunnConnectAPI.Controllers
         var estadoAnterior = inscripcion.EstadoPago;
         string estadoFinal = request.NuevoEstado.ToLower();
 
-        // Mapeo: Si el cliente manda 'confirmado', lo guardamos como 'pagado'
-        if (estadoFinal == "confirmado")
-        {
-          estadoFinal = "pagado";
-        }
-
-        // El repositorio validará si 'pagado' o 'rechazado' son transiciones válidas
+        // El repositorio validara si 'pagado' o 'rechazado' son transiciones válidas
         await _inscripcionRepositorio.CambiarEstadoPagoAsync(id, estadoFinal);
 
         return Ok(new
@@ -476,7 +481,7 @@ namespace RunnConnectAPI.Controllers
         if (validacion.error != null) return validacion.error;
 
         var inscripcion = await _inscripcionRepositorio.ObtenerPorIdAsync(id);
-        if (inscripcion == null) return NotFound(new { message = "Inscripción no encontrada" });
+        if (inscripcion == null) return NotFound(new { message = "Inscripcion no encontrada" });
 
         if (inscripcion.Categoria?.Evento?.IdOrganizador != validacion.userId) return Forbid();
 
@@ -485,8 +490,9 @@ namespace RunnConnectAPI.Controllers
 
         return Ok(new
         {
-          message = "Inscripción marcada como reembolsada",
-          idInscripcion = id
+          message = "Inscripcion marcada como reembolsada",
+          idInscripcion = id,
+          estadoNuevo= "reembolsado"
         });
       }
       catch (InvalidOperationException ex)

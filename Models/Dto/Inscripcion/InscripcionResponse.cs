@@ -19,15 +19,16 @@ namespace RunnConnectAPI.Models.Dto.Inscripcion
     public string EstadoDescripcion => EstadoPago switch
     {
       "pendiente" => "Pendiente de pago",
-      "confirmado" => "Pago confirmado",
-      "rechazado" => "Pago rechazado",
+      "procesando" => "Pago en revision",
+      "pagado" => "Pago confirmado",
+      "rechazado"=> "Pago rechazado",
       "cancelado" => "Inscripción cancelada",
       "reembolsado" => "Pago reembolsado",
       _ => "Sin especificar"
     };
 
     /*Indica si la inscripcion esta activa (confirmada - pendiente)*/
-    public bool EstaActiva=> EstadoPago=="pendiente" || EstadoPago=="confirmado";
+    public bool EstaActiva=> EstadoPago=="pendiente" || EstadoPago=="procesando" || EstadoPago=="pagado";
 
 
   }

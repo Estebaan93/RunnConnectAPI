@@ -10,12 +10,12 @@ namespace RunnConnectAPI.Models.Dto.Inscripcion
   public class CambiarEstadoPagoRequest
   {
     [Required(ErrorMessage = "El nuevo estado es obligatorio")]
-    [RegularExpression("^(confirmado|rechazado)$", 
-      ErrorMessage = "El estado debe ser: confirmado o rechazado")]
+    [RegularExpression("^(pagado|rechazado)$", 
+      ErrorMessage = "El estado debe ser: pagado o rechazado")]
     public string NuevoEstado { get; set; } = string.Empty;
 
 
-    /// Motivo opcional (útil para rechazos)
+    /// Motivo opcional (util para rechazos)
     /// Ejemplo: "Comprobante ilegible", "Monto incorrecto"
 
     [StringLength(500, ErrorMessage = "El motivo no puede exceder 500 caracteres")]

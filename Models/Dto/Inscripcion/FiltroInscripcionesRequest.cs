@@ -13,8 +13,8 @@ namespace RunnConnectAPI.Models.Dto.Inscripcion
 
 
     /// Filtrar por estado de pago
-    [RegularExpression("^(pendiente|confirmado|rechazado|cancelado|reembolsado)$",
-      ErrorMessage = "Estado invalido")]
+    [RegularExpression("^(pendiente|procesando|pagado|rechazado|reembolsado|cancelado)$",
+      ErrorMessage = "Estado invalido. Use: pendiente, procesando, pagado, rechazado, reembolsado, cancelado")]
     public string? EstadoPago { get; set; }
 
 

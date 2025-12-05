@@ -1,23 +1,35 @@
-INSCRIBIRSE A EVENTO:  REQUIERE PERFIL completo
+COLECCION PERFIL RUNNER
 http://localhost:5213/api
 
 Inscripcion: (1)
-POST /Inscripcion
+POST /Inscripcion - Inscribirse a un evento requiere perfil completo
 Authorizacion: token bearer
 Content-Type: application/json
 Body:
   json
     {
-    "idCategoria": 1, 
+    "idCategoria": 1,  
     "talleRemera": "L",
     "aceptoDeslinde": true 
     }
 
 
-Comprobante pago (1)
+Ver mis inscripciones: (1)
+GET /Inscripcion/MisInscripciones - Request: Devuelve las inscripciones del runner
+Authorizacion: token bearer
+Content-Type: 
+Body: 
+
+
+Subir comprobante pago: (1)
 PUT /Inscripcion/{id}/Comprobante
 Authorizacion: token bearer
 Content-Type: multipart/form-data
 Form
   "Comprobante": "File archivo" - ".jpg", ".jpeg", ".png", ".pdf" - hasta 20 MB
 
+
+Cancelar Inscripcion (1) - Cancelar una inscripcion (solo si esta pendiente)
+PUT /Inscripcion/{id}/Cancelar
+Authorizacion: token bearer
+Content-Type: 

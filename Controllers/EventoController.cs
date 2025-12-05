@@ -45,6 +45,10 @@ namespace RunnConnectAPI.Controllers
             Lugar = e.Lugar,
             Estado = e.Estado,
             CupoTotal = e.CupoTotal,
+            CantidadCategorias= e.Categorias?.Count?? 0,
+            InscriptosActuales= e.Categorias?
+              .SelectMany(c=>c.Inscripciones)
+              .Count(i=> i.EstadoPago=="pagado") ?? 0,
             NombreOrganizador = e.Organizador?.Nombre ?? "Sin informacion"
           }).ToList(),
           TotalEventos = eventos.Count,
@@ -95,6 +99,10 @@ namespace RunnConnectAPI.Controllers
             Lugar = e.Lugar,
             Estado = e.Estado,
             CupoTotal = e.CupoTotal,
+            CantidadCategorias= e.Categorias?.Count ?? 0,
+            InscriptosActuales = e.Categorias?
+                .SelectMany(c => c.Inscripciones)
+                .Count(i => i.EstadoPago == "pagado") ?? 0,    
             NombreOrganizador = e.Organizador?.Nombre ?? "Sin información"
           }).ToList(),
           TotalEventos = totalCount,
@@ -208,6 +216,9 @@ namespace RunnConnectAPI.Controllers
             Estado = e.Estado,
             CupoTotal = e.CupoTotal,
             CantidadCategorias=e.Categorias?.Count ?? 0,
+            InscriptosActuales = e.Categorias?
+                .SelectMany(c => c.Inscripciones)
+                .Count(i => i.EstadoPago == "pagado") ?? 0,           
             NombreOrganizador= e.Organizador?.Nombre ??""
           })
         });

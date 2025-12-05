@@ -21,6 +21,8 @@ namespace RunnConnectAPI.Repositories
     {
       return await _context.Eventos
           .Include(e=>e.Organizador)
+          .Include(e=>e.Categorias)
+            .ThenInclude(c=>c.Inscripciones)
           .Where(e => e.Estado == "publicado" && e.FechaHora >= DateTime.Now)
           .OrderBy(e => e.FechaHora)
           .ToListAsync();
@@ -39,8 +41,9 @@ namespace RunnConnectAPI.Repositories
     {
       return await _context.Eventos
           .Include(e => e.Organizador)
-              .ThenInclude(o => o!.PerfilOrganizador)
+            .ThenInclude(o => o!.PerfilOrganizador)
           .Include(e => e.Categorias)
+            .ThenInclude(c=>c.Inscripciones)
           .FirstOrDefaultAsync(e => e.IdEvento == id);
     }
 
@@ -70,6 +73,7 @@ namespace RunnConnectAPI.Repositories
       return await _context.Eventos
           .Include(e=>e.Organizador)
           .Include(e=>e.Categorias)
+            .ThenInclude(c=>c.Inscripciones)
           .Where(e => e.IdOrganizador == idOrganizador)
           .OrderByDescending(e => e.FechaHora)
           .ToListAsync();
@@ -217,6 +221,9 @@ namespace RunnConnectAPI.Repositories
 
       // Aplicar paginacion
       var eventos = await query
+          .Include(e=>e.Organizador)
+          .Include(e=>e.Categorias)
+            .ThenInclude(c=>c.Inscripciones)
           .OrderByDescending(e => e.FechaHora)
           .Skip((pagina - 1) * tamanioPagina)
           .Take(tamanioPagina)

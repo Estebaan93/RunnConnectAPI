@@ -1,3 +1,4 @@
+COLECCION PERFIL ORGANIZADOR
 Post Login - http://localhost:5213/api
 
 ORGANIZADOR (4):
@@ -37,8 +38,6 @@ Request:
     }
   ]
 }
-
-    
 
 
 3. PUT /Evento/{id} - Actualizar un evento - Si esta cancelado y/o finalizado no se puede editar
@@ -135,7 +134,7 @@ Request:
 }
 
 
-CREAR CATEGORIAS PARA EVENTO (3)
+CREAR CATEGORIAS PARA EVENTO (1,2,3)
 1. POST /Evento/{id}/Categorias - {idEvento}
 Authorizacion: token bearer (organizador) - Verificar si es valido el token y si es del organizador
 Content-Type: application/json
@@ -149,3 +148,20 @@ Body:
     "edadMaxima": 99,
     "genero": "X" 
   }
+
+CAMBIAR ESTADO DE INSCRIPCION (2):
+1. POST /Inscripcion/{idInscripcion}/EstadoPago - Del lado del runner envia el comprobante (estadoPago procesando), el organizador espera el impacto
+del pago. (pagado, rechazado) 
+Authorizacion: token bearer (organizador) - 
+Content-Type: application/json
+Body:
+  json
+    {
+      "nuevoEstado": "pagado",
+      "motivo": "Transferencia OK"
+    }
+
+2. PUT /Inscripcion/{id}/Reembolsar - Una vez pagado se puede reembolsar si el runner le pide al organizador
+Authorizacion: token bearer (organizador)
+Content-Type: application/json
+Body:

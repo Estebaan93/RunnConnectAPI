@@ -14,7 +14,7 @@ namespace RunnConnectAPI.Models.Dto.Inscripcion
     public bool AceptoDeslinde { get; set; }
     public string? ComprobantePagoURL { get; set; }
 
-
+    
     /// Informacion del evento
 
     public EventoInscripcionInfo? Evento { get; set; }
@@ -30,14 +30,15 @@ namespace RunnConnectAPI.Models.Dto.Inscripcion
     public string EstadoDescripcion => EstadoPago switch
     {
       "pendiente" => "Pendiente de pago",
-      "confirmado" => "Pago confirmado",
+      "procesando" => "Pago en revisión",
+      "pagado" => "Pago confirmado",
       "rechazado" => "Pago rechazado",
       "cancelado" => "Inscripción cancelada",
       "reembolsado" => "Pago reembolsado",
       _ => "Sin especificar"
     };
 
-    public bool EstaActiva => EstadoPago == "pendiente" || EstadoPago == "confirmado";
+    public bool EstaActiva => EstadoPago == "pendiente" || EstadoPago == "procesando" || EstadoPago=="pagado";
   }
 
 
