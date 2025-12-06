@@ -1,9 +1,10 @@
-// Controllers/ResultadoController.cs
+//Controllers/ResultadoController
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RunnConnectAPI.Models.Dto.Resultado;
 using RunnConnectAPI.Repositories;
 using System.Security.Claims;
+using System.IO;
 
 namespace RunnConnectAPI.Controllers
 {
@@ -18,11 +19,7 @@ namespace RunnConnectAPI.Controllers
       _resultadoRepo = resultadoRepo;
     }
 
-    // ═══════════════════ ENDPOINTS PUBLICOS ═══════════════════
-
-    /// Obtiene un resultado por ID
-    /// Endpoint público - cualquiera puede ver los resultados
-
+    // ═══════════════════ LECTURA (PUBLICO & RUNNER) ═══════════════════
     [HttpGet("{id}")]
     public async Task<IActionResult> ObtenerPorId(int id)
     {
@@ -37,16 +34,14 @@ namespace RunnConnectAPI.Controllers
       }
       catch (Exception ex)
       {
-        return StatusCode(500, new { message = "Error al obtener el resultado", error = ex.Message });
+        return StatusCode(500, new
+        {
+          message = "Error al obtener",
+          error = ex.Message
+        });
       }
     }
 
-
-    /// Obtiene todos los resultados de un evento
-
-
-    /// Endpoint público - muestra tabla de posiciones
-    /// Ordenado por posición general
     [HttpGet("Evento/{idEvento}")]
     public async Task<IActionResult> ObtenerResultadosEvento(int idEvento)
     {
@@ -61,11 +56,14 @@ namespace RunnConnectAPI.Controllers
       }
       catch (Exception ex)
       {
-        return StatusCode(500, new { message = "Error al obtener resultados del evento", error = ex.Message });
+        return StatusCode(500, new
+        {
+          message = "Error al obtener resultados",
+          error = ex.Message
+        });
       }
     }
 
-    /// Obtiene resultados de una categoría específica
     [HttpGet("Categoria/{idCategoria}")]
     public async Task<IActionResult> ObtenerResultadosCategoria(int idCategoria)
     {
@@ -76,16 +74,14 @@ namespace RunnConnectAPI.Controllers
       }
       catch (Exception ex)
       {
-        return StatusCode(500, new { message = "Error al obtener resultados de la categoría", error = ex.Message });
+        return StatusCode(500, new
+        {
+          message = "Error",
+          error = ex.Message
+        });
       }
     }
 
-
-    // ═══════════════════ ENDPOINTS RUNNER ═══════════════════
-
-    /// Obtiene los resultados del runner autenticado
-    /// Requiere: Token JWT de Runner
-    /// Incluye estadísticas acumuladas
     [HttpGet("MisResultados")]
     [Authorize]
     public async Task<IActionResult> MisResultados()
@@ -93,20 +89,22 @@ namespace RunnConnectAPI.Controllers
       try
       {
         var (userId, error) = ValidarRunner();
-        if (error != null) return error;
+        if (error != null)
+          return error;
 
         var resultados = await _resultadoRepo.ObtenerMisResultadosAsync(userId);
         return Ok(resultados);
       }
       catch (Exception ex)
       {
-        return StatusCode(500, new { message = "Error al obtener tus resultados", error = ex.Message });
+        return StatusCode(500, new
+        {
+          message = "Error",
+          error = ex.Message
+        });
       }
     }
 
-    /// Agrega datos de smartwatch/Google Fit a un resultado
-    /// Requiere: Token JWT de Runner (dueño del resultado)
-    /// Permite agregar métricas personales post-carrera
     [HttpPut("{id}/DatosSmartwatch")]
     [Authorize]
     public async Task<IActionResult> AgregarDatosSmartwatch(int id, [FromBody] DatosSmartwatchRequest request)
@@ -114,28 +112,28 @@ namespace RunnConnectAPI.Controllers
       try
       {
         var (userId, error) = ValidarRunner();
-        if (error != null) return error;
+        if (error != null)
+          return error;
 
         var (exito, errorMsg) = await _resultadoRepo.AgregarDatosSmartwatchAsync(id, request, userId);
 
         if (!exito)
           return BadRequest(new { message = errorMsg });
 
-        return Ok(new { message = "Datos de smartwatch agregados correctamente" });
+        return Ok(new { message = "Datos agregados correctamente" });
       }
       catch (Exception ex)
       {
-        return StatusCode(500, new { message = "Error al agregar datos de smartwatch", error = ex.Message });
+        return StatusCode(500, new
+        {
+          message = "Error",
+          error = ex.Message
+        });
       }
     }
 
-
-    // ═══════════════════ ENDPOINTS ORGANIZADOR ═══════════════════
-
-    /// Carga un resultado individual
-    /// Requiere: Token JWT de Organizador (dueño del evento)
-    /// El evento debe estar en estado "finalizado"
-    /// La inscripción debe estar "confirmada"
+    // ═══════════════════ GESTION (ORGANIZADOR) ═══════════════════
+    /// CARGA MANUAL (1 a 1) -> Recibe JSON
     [HttpPost("Cargar")]
     [Authorize]
     public async Task<IActionResult> CargarResultado([FromBody] CargarResultadoRequest request)
@@ -143,7 +141,8 @@ namespace RunnConnectAPI.Controllers
       try
       {
         var (userId, error) = ValidarOrganizador();
-        if (error != null) return error;
+        if (error != null)
+          return error;
 
         var (resultado, errorMsg) = await _resultadoRepo.CargarResultadoAsync(request, userId);
 
@@ -151,55 +150,115 @@ namespace RunnConnectAPI.Controllers
           return BadRequest(new { message = errorMsg });
 
         return CreatedAtAction(
-          nameof(ObtenerPorId),
-          new { id = resultado.IdResultado },
-          new
-          {
-            message = "Resultado cargado correctamente",
-            idResultado = resultado.IdResultado
-          });
+            nameof(ObtenerPorId),
+            new { id = resultado.IdResultado },
+            new
+            {
+              message = "Resultado cargado correctamente",
+              idResultado = resultado.IdResultado
+            });
       }
       catch (Exception ex)
       {
-        return StatusCode(500, new { message = "Error al cargar el resultado", error = ex.Message });
+        return StatusCode(500, new
+        {
+          message = "Error al cargar",
+          error = ex.Message
+        });
       }
     }
 
-    /// Carga resultados en batch (múltiples runners)
-    /// Requiere: Token JWT de Organizador (dueño del evento)
-    /// Identifica runners por DNI
-    /// Devuelve resumen de éxitos y errores
-    [HttpPost("CargarBatch")]
+    /// CARGA MASIVA (Batch) -> Recibe Archivo CSV
+    /// Formato CSV esperado: DNI,TiempoOficial,PosGeneral,PosCategoria
+    [HttpPost("CargarArchivo")]
     [Authorize]
-    public async Task<IActionResult> CargarResultadosBatch([FromBody] CargarResultadosRequest request)
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> CargarArchivoResultados([FromForm] SubirResultadosArchivoRequest request)
     {
       try
       {
         var (userId, error) = ValidarOrganizador();
-        if (error != null) return error;
+        if (error != null)
+          return error;
 
-        var resultado = await _resultadoRepo.CargarResultadosBatchAsync(request, userId);
+        if (request.Archivo == null || request.Archivo.Length == 0)
+          return BadRequest(new { message = "El archivo es obligatorio" });
 
-        if (resultado.Fallidos > 0 && resultado.Exitosos == 0)
-          return BadRequest(new
+        var extension = Path.GetExtension(request.Archivo.FileName).ToLower();
+        if (extension != ".csv" && extension != ".txt")
+          return BadRequest(new { message = "Solo se permiten archivos CSV o TXT" });
+
+        var listaResultados = new List<ResultadoItem>();
+
+        using (var reader = new StreamReader(request.Archivo.OpenReadStream()))
+        {
+          // Opcional: Descomentar si el CSV tiene encabezados y quieres saltar la primera linea
+          // await reader.ReadLineAsync();
+
+          while (!reader.EndOfStream)
           {
-            message = "No se pudo cargar ningún resultado",
-            detalles = resultado
-          });
+            var linea = await reader.ReadLineAsync();
+            if (string.IsNullOrWhiteSpace(linea))
+              continue;
+
+            var valores = linea.Split(','); // Separador coma
+
+            // Validación básica de columnas (mínimo DNI y Tiempo)
+            if (valores.Length < 2)
+              continue;
+
+            try
+            {
+              var item = new ResultadoItem
+              {
+                // Columna 0: DNI
+                Dni = int.Parse(valores[0].Trim()),
+                // Columna 1: Tiempo
+                TiempoOficial = valores[1].Trim(),
+                // Columna 2: Pos General (Opcional)
+                PosicionGeneral = (valores.Length > 2 && int.TryParse(valores[2], out int pg)) ? pg : null,
+                // Columna 3: Pos Categoria (Opcional)
+                PosicionCategoria = (valores.Length > 3 && int.TryParse(valores[3], out int pc)) ? pc : null
+              };
+
+              listaResultados.Add(item);
+            }
+            catch
+            {
+              continue; // Ignoramos líneas mal formadas
+            }
+          }
+        }
+
+        if (listaResultados.Count == 0)
+          return BadRequest(new { message = "No se pudieron leer resultados válidos del archivo." });
+
+        // Transformamos los datos leídos al objeto que el repositorio entiende
+        var requestRepo = new CargarResultadosRequest
+        {
+          IdEvento = request.IdEvento,
+          Resultados = listaResultados
+        };
+
+        // Delegamos la lógica de negocio al repositorio
+        var resultado = await _resultadoRepo.CargarResultadosBatchAsync(requestRepo, userId);
 
         return Ok(new
         {
-          message = $"Carga completada: {resultado.Exitosos} exitosos, {resultado.Fallidos} fallidos",
+          message = $"Archivo procesado. {resultado.Exitosos} cargados, {resultado.Fallidos} fallidos.",
           detalles = resultado
         });
       }
       catch (Exception ex)
       {
-        return StatusCode(500, new { message = "Error en la carga batch", error = ex.Message });
+        return StatusCode(500, new
+        {
+          message = "Error al procesar archivo",
+          error = ex.Message
+        });
       }
     }
 
-    /// Actualiza el tiempo oficial de un resultado
     [HttpPut("{id}/TiempoOficial")]
     [Authorize]
     public async Task<IActionResult> ActualizarTiempoOficial(int id, [FromBody] ActualizarTiempoOficialRequest request)
@@ -207,22 +266,26 @@ namespace RunnConnectAPI.Controllers
       try
       {
         var (userId, error) = ValidarOrganizador();
-        if (error != null) return error;
+        if (error != null)
+          return error;
 
         var (exito, errorMsg) = await _resultadoRepo.ActualizarTiempoOficialAsync(id, request.TiempoOficial, userId);
 
         if (!exito)
           return BadRequest(new { message = errorMsg });
 
-        return Ok(new { message = "Tiempo oficial actualizado correctamente" });
+        return Ok(new { message = "Tiempo oficial actualizado" });
       }
       catch (Exception ex)
       {
-        return StatusCode(500, new { message = "Error al actualizar tiempo oficial", error = ex.Message });
+        return StatusCode(500, new
+        {
+          message = "Error",
+          error = ex.Message
+        });
       }
     }
 
-    /// Actualiza las posiciones de un resultado
     [HttpPut("{id}/Posiciones")]
     [Authorize]
     public async Task<IActionResult> ActualizarPosiciones(int id, [FromBody] ActualizarPosicionesRequest request)
@@ -230,23 +293,26 @@ namespace RunnConnectAPI.Controllers
       try
       {
         var (userId, error) = ValidarOrganizador();
-        if (error != null) return error;
+        if (error != null)
+          return error;
 
         var (exito, errorMsg) = await _resultadoRepo.ActualizarPosicionesAsync(id, request, userId);
 
         if (!exito)
           return BadRequest(new { message = errorMsg });
 
-        return Ok(new { message = "Posiciones actualizadas correctamente" });
+        return Ok(new { message = "Posiciones actualizadas" });
       }
       catch (Exception ex)
       {
-        return StatusCode(500, new { message = "Error al actualizar posiciones", error = ex.Message });
+        return StatusCode(500, new
+        {
+          message = "Error",
+          error = ex.Message
+        });
       }
     }
 
-    /// Elimina un resultado
-    /// Elimina completamente el resultado (incluyendo datos de smartwatch)
     [HttpDelete("{id}")]
     [Authorize]
     public async Task<IActionResult> EliminarResultado(int id)
@@ -254,24 +320,27 @@ namespace RunnConnectAPI.Controllers
       try
       {
         var (userId, error) = ValidarOrganizador();
-        if (error != null) return error;
+        if (error != null)
+          return error;
 
         var (exito, errorMsg) = await _resultadoRepo.EliminarResultadoAsync(id, userId);
 
         if (!exito)
           return BadRequest(new { message = errorMsg });
 
-        return Ok(new { message = "Resultado eliminado correctamente" });
+        return Ok(new { message = "Resultado eliminado" });
       }
       catch (Exception ex)
       {
-        return StatusCode(500, new { message = "Error al eliminar resultado", error = ex.Message });
+        return StatusCode(500, new
+        {
+          message = "Error",
+          error = ex.Message
+        });
       }
     }
 
-
-    // ═══════════════════ HELPERS PRIVADOS ═══════════════════
-
+    // ═══════════════════ HELPERS ═══════════════════
     private (int userId, IActionResult? error) ValidarRunner()
     {
       var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -279,8 +348,8 @@ namespace RunnConnectAPI.Controllers
         return (0, Unauthorized(new { message = "No autorizado" }));
 
       var userId = int.Parse(userIdClaim.Value);
-
       var tipoUsuarioClaim = User.FindFirst("TipoUsuario");
+
       if (tipoUsuarioClaim == null || tipoUsuarioClaim.Value.ToLower() != "runner")
         return (0, BadRequest(new { message = "Solo los runners pueden realizar esta acción" }));
 
@@ -294,19 +363,12 @@ namespace RunnConnectAPI.Controllers
         return (0, Unauthorized(new { message = "No autorizado" }));
 
       var userId = int.Parse(userIdClaim.Value);
-
       var tipoUsuarioClaim = User.FindFirst("TipoUsuario");
+
       if (tipoUsuarioClaim == null || tipoUsuarioClaim.Value.ToLower() != "organizador")
         return (0, BadRequest(new { message = "Solo los organizadores pueden realizar esta acción" }));
 
       return (userId, null);
     }
-
-  }
-
-  /// DTO simple para actualizar tiempo oficial
-  public class ActualizarTiempoOficialRequest
-  {
-    public string TiempoOficial { get; set; } = string.Empty;
   }
 }
