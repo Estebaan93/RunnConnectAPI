@@ -11,6 +11,7 @@ namespace RunnConnectAPI.Models
   public class NotificacionEvento
   {
     [Key]
+    [Column("idNotificacion")]
     public int IdNotificacion {get;set;}
 
     [Required]
@@ -21,6 +22,7 @@ namespace RunnConnectAPI.Models
     [StringLength(255, MinimumLength = 3, ErrorMessage = "El titulo debe tener mas de 3 caracteres")]
     public string Titulo {get;set;}= string.Empty;
 
+    
     [Column("mensaje", TypeName="text")]  
     public string? Mensaje {get;set;}
 
@@ -28,7 +30,7 @@ namespace RunnConnectAPI.Models
     public DateTime FechaEnvio {get;set;}= DateTime.Now;
 
     //Navegacion
-    [ForeignKey("idEvento")]
+    [ForeignKey("IdEvento")]
     [JsonIgnore]
     public Evento? Evento {get;set;}
 
