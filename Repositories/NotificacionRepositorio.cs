@@ -94,7 +94,12 @@ namespace RunnConnectAPI.Repositories
     /// Útil para mostrar badge/contador en la app
     public async Task<int> ContarNotificacionesRecientesAsync(int idUsuario)
     {
-      var hace24Horas = DateTime.Now.AddHours(-24);
+      //Fecha ultima lectura del runner
+      var perfil = await _context.PerfilesRunners
+            .FirstOrDefaultAsync(p => p.IdUsuario == idUsuario);
+
+      //Si nunca entro asumimos que es una fecha muy vieja (todo nuevo)
+      var ultimaLectura = perfil?.FechaUltimaLectura ?? DateTime.MinValue;
 
       // Obtener IDs de eventos donde el runner esta inscripto
       var eventosInscripto = await _context.Inscripciones
@@ -107,8 +112,24 @@ namespace RunnConnectAPI.Repositories
       if (!eventosInscripto.Any())
         return 0;
 
+      //Contar notificaciones enviadas despues de su ultima lectura
       return await _context.NotificacionesEvento
-        .CountAsync(n => eventosInscripto.Contains(n.IdEvento) && n.FechaEnvio >= hace24Horas);
+        .CountAsync(n => eventosInscripto.Contains(n.IdEvento) && n.FechaEnvio >= ultimaLectura);
+    }
+
+    /// METODO NUEVO: MARCAR TODO COMO LEÍDO
+    /// Se llama cuando el usuario abre la pantalla de notificaciones
+    public async Task MarcarTodasComoLeidasAsync(int idUsuario)
+    {
+        var perfil = await _context.PerfilesRunners
+            .FirstOrDefaultAsync(p => p.IdUsuario == idUsuario);
+
+        if (perfil != null)
+        {
+            // Actualizamos la fecha a "Ahora"
+            perfil.FechaUltimaLectura = DateTime.Now;
+            await _context.SaveChangesAsync();
+        }
     }
 
     /// Cuenta notificaciones de un evento

@@ -64,6 +64,9 @@ namespace RunnConnectAPI.Models
     [Column("telefonoEmergencia")]
     public string? TelefonoEmergencia { get; set; }
 
+    [Column("fechaUltimaLectura")]
+    public DateTime? FechaUltimaLectura {get;set;}
+
     // Navegacion
     [ForeignKey("IdUsuario")]
     public Usuario Usuario { get; set; } = null!;

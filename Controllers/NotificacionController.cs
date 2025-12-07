@@ -118,7 +118,35 @@ namespace RunnConnectAPI.Controllers
       }
     }
 
-  
+    /// Marca todas las notificaciones como leidas (limpia el contador)
+    /// La App debe llamar a esto cuando el usuario abre la pantalla "Mis Notificaciones"
+    [HttpPost("MarcarComoLeidas")]
+    [Authorize]
+    public async Task<IActionResult> MarcarComoLeidas()
+    {
+      try
+      {
+        var (userId, error) = ValidarRunner();
+        if (error != null)
+          return error;
+
+        await _notificacionRepo.MarcarTodasComoLeidasAsync(userId);
+
+        return Ok(new
+        {
+          message = "Buzon marcado como leido"
+        });
+      }
+      catch (Exception ex)
+      {
+        return StatusCode(500, new
+        {
+          message = "Error al marcar como leidas",
+          error = ex.Message
+        });
+      }
+    }
+
 
     // ═══════════════════ ENDPOINTS ORGANIZADOR ═══════════════════
 
@@ -250,6 +278,6 @@ namespace RunnConnectAPI.Controllers
       return (userId, null);
     }
 
-  
+
   }
 }
