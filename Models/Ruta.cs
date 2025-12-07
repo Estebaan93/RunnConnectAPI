@@ -36,7 +36,7 @@ namespace RunnConnectAPI.Models
 
 
     /*Navegacion*/
-    [ForeignKey("idEvento")]
+    [ForeignKey("IdEvento")]
     [JsonIgnore]
     public Evento? Evento{get;set;}
 

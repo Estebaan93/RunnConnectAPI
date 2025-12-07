@@ -22,7 +22,7 @@ namespace RunnConnectAPI.Models
 
     /*Tipo del punto de interes: hidratacion, meta, primeroAuxilios*/
     [Required]
-    [Column(TypeName="varchar(50)")]
+    [Column("tipo",TypeName="varchar(50)")]
     public string Tipo {get;set;} = string.Empty; //Hidratacion, meta, largada
 
     /*Nombre descriptivo (ej hidratacion KM 5)*/
@@ -43,7 +43,7 @@ namespace RunnConnectAPI.Models
 
 
     /*Navegacion*/  
-    [ForeignKey("idEvento")]
+    [ForeignKey("IdEvento")]
     [JsonIgnore]
     public Evento? Evento {get;set;}
 

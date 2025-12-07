@@ -203,7 +203,7 @@ namespace RunnConnectAPI.Controllers
 
             var valores = linea.Split(','); // Separador coma
 
-            // Validación básica de columnas (mínimo DNI y Tiempo)
+            // Validación basica de columnas (mínimo DNI y Tiempo)
             if (valores.Length < 2)
               continue;
 
@@ -231,9 +231,9 @@ namespace RunnConnectAPI.Controllers
         }
 
         if (listaResultados.Count == 0)
-          return BadRequest(new { message = "No se pudieron leer resultados válidos del archivo." });
+          return BadRequest(new { message = "No se pudieron leer resultados validos del archivo." });
 
-        // Transformamos los datos leídos al objeto que el repositorio entiende
+        // Transformamos los datos leidos al objeto que el repositorio entiende
         var requestRepo = new CargarResultadosRequest
         {
           IdEvento = request.IdEvento,
@@ -351,7 +351,7 @@ namespace RunnConnectAPI.Controllers
       var tipoUsuarioClaim = User.FindFirst("TipoUsuario");
 
       if (tipoUsuarioClaim == null || tipoUsuarioClaim.Value.ToLower() != "runner")
-        return (0, BadRequest(new { message = "Solo los runners pueden realizar esta acción" }));
+        return (0, BadRequest(new { message = "Solo los runners pueden realizar esta accion" }));
 
       return (userId, null);
     }

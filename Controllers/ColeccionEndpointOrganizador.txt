@@ -165,3 +165,104 @@ Body:
 Authorizacion: token bearer (organizador)
 Content-Type: application/json
 Body:
+
+
+
+NOTA: 
+Debemos corregir el endpoint para la carga del modelo CargarResultadoRequest -> CargarResultadosBatch (espera un JSON), en la documentacion dice que me espera
+un CSV, que la da la empresa que cronometra los datos con el chip NFC etc
+
+Vamos a eliminar los metodos que reciban carga tipo JSON. Solo vamos a recibir .csv ya sea en forma masiva o 1 por 1 (manual).
+
+http://localhost:5213/api
+
+Cargar Resultados (2) NOTA: Para poder cargar los resultado el evento tiene que haber finalizado
+1. POST /Resultado/CargarArchivo
+Authorizacion: token bearer
+Content-Type: multipart/form-data
+Form Data:
+  IdEvento: [idEvento] tipo int 1, 2, 3... 
+  Archivo: [Tipo File] - .csv el formato es DNI,Tiempo,PosGeneral,PosCategoria
+
+
+2. POST / - Carga individual de un resultado con json
+
+
+Obtener resultados (2)
+1. GET /Resultado/Evento/{id} - Resultados de un evento, endpoint publico
+Authorizacion: publico
+Content-Type:
+
+
+2. GET /Resultado/{id} - Resultado especifico de una posicion - publico
+Authorizacion: publico
+
+
+
+TRAZADO DE RUTA (1)
+NOTA: Desde la app el organizador traza la ruta en una vista de mapas haciendo uso del SDK de Google Maps.
+  Es decir el organizador nunca sale de la app
+1. PUT /Evento/{}/Ruta - 
+Authorizacion: token bearer
+Content-Type: json
+Body:
+  JSON
+    {
+     "idEvento": 1,
+     "puntos": [
+    {
+      "latitud": -33.302150,
+      "longitud": -66.336800,
+      "orden": 1
+    },
+    {
+      "latitud": -33.302150,
+      "longitud": -66.338000,
+      "orden": 2
+    },
+    {
+      "latitud": -33.303200,
+      "longitud": -66.338000,
+      "orden": 3
+    },
+    {
+      "latitud": -33.303200,
+      "longitud": -66.336800,
+      "orden": 4
+    },
+    {
+      "latitud": -33.302150,
+      "longitud": -66.336800,
+      "orden": 5
+    }
+  ]
+}
+
+
+AGREGAR PUNTOS DE INTERES (1,2,3...)
+NOTA: El organizador marca un punto de interes en el evento (ruta) hidratacion, meta etc
+1. POST /Evento/{}/PuntosInteres - Meta/Largada
+Authorizacion: token bearer
+Content-Type: application/json
+Body:
+  JSON
+    {
+    "tipo": "largada",
+    "nombre": "Arco de Largada/Llegada",
+    "latitud": -33.302150,
+    "longitud": -66.336800
+    }
+
+
+2. POST /Evento/{}/PuntosInteres - Puesto de Hidratacion
+Authorizacion: token bearer
+Content-Type: application/json
+Body:
+    {
+    "tipo": "hidratacion",
+    "nombre": "Agua e Isotónica (Km 0.5)",
+    "latitud": -33.303200,
+    "longitud": -66.338000
+    }
+        
+    
