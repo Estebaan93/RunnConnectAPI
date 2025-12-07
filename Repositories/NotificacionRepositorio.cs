@@ -50,7 +50,7 @@ namespace RunnConnectAPI.Repositories
       // Obtener IDs de eventos donde el runner esta inscripto con pago confirmado
       var eventosInscripto = await _context.Inscripciones
         .Include(i => i.Categoria)
-        .Where(i => i.IdUsuario == idUsuario && i.EstadoPago == "confirmado")
+        .Where(i => i.IdUsuario == idUsuario && i.EstadoPago == "pagado")
         .Select(i => i.Categoria!.IdEvento)
         .Distinct()
         .ToListAsync();
@@ -99,7 +99,7 @@ namespace RunnConnectAPI.Repositories
       // Obtener IDs de eventos donde el runner esta inscripto
       var eventosInscripto = await _context.Inscripciones
         .Include(i => i.Categoria)
-        .Where(i => i.IdUsuario == idUsuario && i.EstadoPago == "confirmado")
+        .Where(i => i.IdUsuario == idUsuario && i.EstadoPago == "pagado")
         .Select(i => i.Categoria!.IdEvento)
         .Distinct()
         .ToListAsync();
