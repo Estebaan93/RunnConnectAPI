@@ -1085,7 +1085,7 @@ namespace RunnConnectAPI.Controllers
         if (usuario.Estado)
           return BadRequest(new { message = "La cuenta ya está activa" });
 
-        // 7. ✨ REACTIVAR CUENTA
+        // 7. REACTIVAR CUENTA
         usuario.Estado = true;
         await _usuarioRepositorio.UpdateAsync(usuario);
 
