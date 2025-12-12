@@ -114,4 +114,7 @@ app.MapControllers();
 
 app.Run();
 
+//Escuchar en todas las interfaces
+/*app.Urls.Add("http://0.0.0.0:5213");*/
+
 
