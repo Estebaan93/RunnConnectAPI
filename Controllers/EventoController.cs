@@ -230,7 +230,7 @@ namespace RunnConnectAPI.Controllers
     }
 
 
-    /*POST: api/Nuevo - Crea un nuevo evento (Organizadores)*/
+    /*POST: api/Nuevo - Crea un nuevo evento (Organizadores) y sus categorias*/
     [Authorize]
     [HttpPost]
     public async Task<IActionResult> CrearEvento([FromBody] CrearEventoRequest request)
@@ -276,6 +276,27 @@ namespace RunnConnectAPI.Controllers
         };
 
         var eventoCreado = await _eventoRepositorio.CrearAsync(evento);
+
+        //guardar categorias junto al precio
+        if (request.Categorias != null && request.Categorias.Any())
+        {
+          foreach (var catDto in request.Categorias)
+          {
+            var nuevaCategoria = new CategoriaEvento
+            {
+              IdEvento = eventoCreado.IdEvento, // Vinculamos con el ID generado
+              Nombre = catDto.Nombre,
+              CostoInscripcion = catDto.CostoInscripcion, // $$$ Precio real
+              CupoCategoria = catDto.CupoCategoria,
+              EdadMinima = catDto.EdadMinima,
+              EdadMaxima = catDto.EdadMaxima,
+              Genero = catDto.Genero
+            };
+            // Usamos el repositorio de categorías existente
+            await _categoriaRepositorio.CrearAsync(nuevaCategoria);
+          }
+        }
+
 
         return CreatedAtAction(
             nameof(ObtenerEventosPorId),
