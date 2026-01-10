@@ -21,7 +21,7 @@ namespace RunnConnectAPI.Controllers
     {
       _eventoRepositorio = eventoRepositorio;
       _usuarioRepositorio = usuarioRepositorio;
-      _categoriaRepositorio= categoriaRepositorio;
+      _categoriaRepositorio = categoriaRepositorio;
     }
 
     /*Endpoint publicos (sin autenticacion) para el usuario nuevo antes de loguearse, pueda ver los proximos eventos, y posterior
@@ -29,35 +29,39 @@ namespace RunnConnectAPI.Controllers
     GET: api/Evento/Publicados - obtiene los eventos publicado y futuros*/
     [AllowAnonymous]
     [HttpGet("Publicados")]
-    public async Task<IActionResult> ObtenerEventosPublicados()
+    public async Task<IActionResult> ObtenerEventosPublicados([FromQuery] int pagina = 1, [FromQuery] int tamanioPagina = 10)
     {
       try
       {
-        var eventos = await _eventoRepositorio.ObtenerEventosPublicadosAsync();
+        // Ahora este método requiere paginación obligatoria
+        var (eventos, totalCount) = await _eventoRepositorio.ObtenerEventosPublicadosAsync(pagina, tamanioPagina);
 
-        var response = new EventosPaginadosResponse
+        var totalPaginas = (int)Math.Ceiling(totalCount / (double)tamanioPagina);
+
+        // Mapeo
+        var eventosDto = eventos.Select(e => new EventoResumenResponse
         {
-          Eventos = eventos.Select(e => new EventoResumenResponse
-          {
-            IdEvento = e.IdEvento,
-            Nombre = e.Nombre,
-            FechaHora = e.FechaHora,
-            Lugar = e.Lugar,
-            Estado = e.Estado,
-            CupoTotal = e.CupoTotal,
-            CantidadCategorias= e.Categorias?.Count?? 0,
-            InscriptosActuales= e.Categorias?
-              .SelectMany(c=>c.Inscripciones)
-              .Count(i=> i.EstadoPago=="pagado") ?? 0,
-            NombreOrganizador = e.Organizador?.Nombre ?? "Sin informacion"
-          }).ToList(),
-          TotalEventos = eventos.Count,
-          PaginaActual = 1,
-          TotalPaginas = 1,
-          TamanioPagina = eventos.Count
-        };
+          IdEvento = e.IdEvento,
+          Nombre = e.Nombre,
+          FechaHora = e.FechaHora,
+          Lugar = e.Lugar,
+          Estado = e.Estado,
+          CupoTotal = e.CupoTotal,
+          CantidadCategorias = e.Categorias?.Count ?? 0,
+          InscriptosActuales = e.Categorias?
+                .SelectMany(c => c.Inscripciones)
+                .Count(i => i.EstadoPago == "pagado") ?? 0,
+          NombreOrganizador = e.Organizador?.Nombre ?? "Sin informacion"
+        }).ToList();
 
-        return Ok(response);
+        return Ok(new EventosPaginadosResponse
+        {
+          Eventos = eventosDto,
+          PaginaActual = pagina,
+          TotalPaginas = totalPaginas,
+          TotalEventos = totalCount,
+          TamanioPagina = tamanioPagina
+        });
       }
       catch (Exception ex)
       {
@@ -99,10 +103,10 @@ namespace RunnConnectAPI.Controllers
             Lugar = e.Lugar,
             Estado = e.Estado,
             CupoTotal = e.CupoTotal,
-            CantidadCategorias= e.Categorias?.Count ?? 0,
+            CantidadCategorias = e.Categorias?.Count ?? 0,
             InscriptosActuales = e.Categorias?
                 .SelectMany(c => c.Inscripciones)
-                .Count(i => i.EstadoPago == "pagado") ?? 0,    
+                .Count(i => i.EstadoPago == "pagado") ?? 0,
             NombreOrganizador = e.Organizador?.Nombre ?? "Sin información"
           }).ToList(),
           TotalEventos = totalCount,
@@ -134,7 +138,7 @@ namespace RunnConnectAPI.Controllers
 
         //obtener inscriptos por categoria para mostar en el detalle
         var inscriptosTotal = await _eventoRepositorio.ContarInscriptosAsync(id);
-        var inscriptosPorCategoria= await _categoriaRepositorio.ObtenerInscriptosPorCategoriaAsync(id);
+        var inscriptosPorCategoria = await _categoriaRepositorio.ObtenerInscriptosPorCategoriaAsync(id);
 
         var response = new EventoDetalleResponse
         {
@@ -169,7 +173,7 @@ namespace RunnConnectAPI.Controllers
             EdadMinima = c.EdadMinima,
             EdadMaxima = c.EdadMaxima,
             Genero = c.Genero,
-            InscriptosActuales= inscriptosPorCategoria.ContainsKey(c.IdCategoria)
+            InscriptosActuales = inscriptosPorCategoria.ContainsKey(c.IdCategoria)
             ? inscriptosPorCategoria[c.IdCategoria]
             : 0
           }).ToList()
@@ -188,39 +192,48 @@ namespace RunnConnectAPI.Controllers
 
 
 
-    
+
 
     /*Endpoints para organizadores (requiere autenticacion)*/
-    /*GET: api/Evento/MisEventos - Obtenemos los eventos de un organizador autenticado*/
+    /*GET: api/Evento/MisEventos - Obtenemos los eventos de un organizador autenticado
+      vamos hacer una paginacion cada 10 elementos*/
     [Authorize]
     [HttpGet("MisEventos")]
-    public async Task<IActionResult> ObtenerMisEventos()
+    public async Task<IActionResult> ObtenerMisEventos([FromQuery] int pagina = 1, [FromQuery] int tamanioPagina = 10)
     {
       try
       {
         var validacion = ValidarOrganizador();
-        if (validacion.error != null)
-          return validacion.error;
+        if (validacion.error != null) return validacion.error;
 
-        var eventos = await _eventoRepositorio.ObtenerTodosPorOrganizadorAsync(validacion.userId);
+        // Ahora este método requiere paginación obligatoria
+        var (eventos, totalCount) = await _eventoRepositorio.ObtenerTodosPorOrganizadorAsync(validacion.userId, pagina, tamanioPagina);
 
-        return Ok(new
+        var totalPaginas = (int)Math.Ceiling(totalCount / (double)tamanioPagina);
+
+        // Mapeo
+        var eventosDto = eventos.Select(e => new EventoResumenResponse
         {
-          total = eventos.Count,
-          eventos = eventos.Select(e => new EventoResumenResponse
-          {
-            IdEvento = e.IdEvento,
-            Nombre = e.Nombre,
-            FechaHora = e.FechaHora,
-            Lugar = e.Lugar,
-            Estado = e.Estado,
-            CupoTotal = e.CupoTotal,
-            CantidadCategorias=e.Categorias?.Count ?? 0,
-            InscriptosActuales = e.Categorias?
+          IdEvento = e.IdEvento,
+          Nombre = e.Nombre,
+          FechaHora = e.FechaHora,
+          Lugar = e.Lugar,
+          Estado = e.Estado,
+          CupoTotal = e.CupoTotal,
+          CantidadCategorias = e.Categorias?.Count ?? 0,
+          InscriptosActuales = e.Categorias?
                 .SelectMany(c => c.Inscripciones)
-                .Count(i => i.EstadoPago == "pagado") ?? 0,           
-            NombreOrganizador= e.Organizador?.Nombre ??""
-          })
+                .Count(i => i.EstadoPago == "pagado") ?? 0,
+          NombreOrganizador = e.Organizador?.Nombre ?? ""
+        }).ToList();
+
+        return Ok(new EventosPaginadosResponse
+        {
+          Eventos = eventosDto,
+          PaginaActual = pagina,
+          TotalPaginas = totalPaginas,
+          TotalEventos = totalCount,
+          TamanioPagina = tamanioPagina
         });
       }
       catch (Exception ex)
@@ -370,8 +383,8 @@ namespace RunnConnectAPI.Controllers
             FechaHora = evento.FechaHora,
             Lugar = evento.Lugar,
             Estado = evento.Estado,
-            CupoTotal= evento.CupoTotal,
-            NombreOrganizador= evento.Organizador?.Nombre ??""
+            CupoTotal = evento.CupoTotal,
+            NombreOrganizador = evento.Organizador?.Nombre ?? ""
           }
         });
       }

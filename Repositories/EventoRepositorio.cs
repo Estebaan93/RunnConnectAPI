@@ -17,7 +17,7 @@ namespace RunnConnectAPI.Repositories
 
     // Consultas publicas
     /// Obtiene eventos publicados y futuros (para listado publico/runners)
-    public async Task<List<Evento>> ObtenerEventosPublicadosAsync()
+    /*public async Task<List<Evento>> ObtenerEventosPublicadosAsync()
     {
       return await _context.Eventos
           .Include(e=>e.Organizador)
@@ -26,6 +26,29 @@ namespace RunnConnectAPI.Repositories
           .Where(e => e.Estado == "publicado" && e.FechaHora >= DateTime.Now)
           .OrderBy(e => e.FechaHora)
           .ToListAsync();
+    }*/
+    //Para paginado
+    public async Task<(List<Evento> eventos, int totalCount)> ObtenerEventosPublicadosAsync(int pagina, int tamanioPagina)
+    {
+      // 1. Query base (Solo publicados y futuros)
+      var query = _context.Eventos
+          .AsNoTracking()
+          .Where(e => e.Estado == "publicado" && e.FechaHora >= DateTime.Now);
+
+      // 2. Contar total real
+      var totalCount = await query.CountAsync();
+
+      // 3. Obtener página
+      var eventos = await query
+          .Include(e => e.Organizador)
+          .Include(e => e.Categorias)
+              .ThenInclude(c => c.Inscripciones)
+          .OrderBy(e => e.FechaHora) // Orden: Los más próximos primero
+          .Skip((pagina - 1) * tamanioPagina)
+          .Take(tamanioPagina)
+          .ToListAsync();
+
+      return (eventos, totalCount);
     }
 
     /// Obtiene un evento por ID con informacion del organizador
@@ -65,10 +88,10 @@ namespace RunnConnectAPI.Repositories
 
 
     //Consultas para Organizadores
-
     /// Obtiene TODOS los eventos de un organizador (para gestion)
     /// Incluye todos los estados
-    public async Task<List<Evento>> ObtenerTodosPorOrganizadorAsync(int idOrganizador)
+    /// Incluye paginacion para que traiga dinamicamente los eventos
+    /*public async Task<List<Evento>> ObtenerTodosPorOrganizadorAsync(int idOrganizador)
     {
       return await _context.Eventos
           .Include(e=>e.Organizador)
@@ -77,7 +100,29 @@ namespace RunnConnectAPI.Repositories
           .Where(e => e.IdOrganizador == idOrganizador)
           .OrderByDescending(e => e.FechaHora)
           .ToListAsync();
-    }
+    }*/
+    public async Task<(List<Evento> eventos, int totalCount)> ObtenerTodosPorOrganizadorAsync(int idOrganizador, int pagina, int tamanioPagina)
+        {
+            // 1. Query base (Filtrar por organizador)
+            var query = _context.Eventos
+                .AsNoTracking()
+                .Where(e => e.IdOrganizador == idOrganizador);
+
+            // 2. Contar total
+            var totalCount = await query.CountAsync();
+
+            // 3. Obtener página
+            var eventos = await query
+                .Include(e => e.Organizador)
+                .Include(e => e.Categorias)
+                    .ThenInclude(c => c.Inscripciones)
+                .OrderByDescending(e => e.FechaHora) // Orden: Los más nuevos primero
+                .Skip((pagina - 1) * tamanioPagina)
+                .Take(tamanioPagina)
+                .ToListAsync();
+
+            return (eventos, totalCount);
+        }
 
 
     /// Verifica si un evento pertenece a un organizador especifico
