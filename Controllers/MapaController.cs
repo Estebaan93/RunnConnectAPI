@@ -8,7 +8,7 @@ using System.Security.Claims;
 
 namespace RunnConnectAPI.Controllers
 {
-  /// Controller para gestión de Rutas y Puntos de Interés de eventos
+  /// Controller para gestion de Rutas y Puntos de Interes de eventos
   /// Permite al organizador dibujar la ruta y marcar puntos importantes
   [ApiController]
   [Route("api/Evento/{idEvento}")]
@@ -21,7 +21,7 @@ namespace RunnConnectAPI.Controllers
       _rutaRepo = rutaRepo;
     }
 
-    // ═══════════════════ MAPA COMPLETO ═══════════════════
+    // ----------- MAPA COMPLETO --------------
 
     /// Obtiene el mapa completo del evento (ruta + puntos de interés)
     /// Endpoint público - ideal para la app Android
@@ -45,7 +45,7 @@ namespace RunnConnectAPI.Controllers
     }
 
 
-    // ═══════════════════ RUTAS ═══════════════════
+    // -------------RUTAS--------------- 
 
     /// Obtiene la ruta (trazado GPS) de un evento
     /// Endpoint público
@@ -125,7 +125,7 @@ namespace RunnConnectAPI.Controllers
     }
 
 
-    // ═══════════════════ PUNTOS DE INTERÉS ═══════════════════
+    // ------------- PUNTOS DE INTERES -------------
 
     /// Obtiene todos los puntos de interés de un evento
     /// Endpoint público
@@ -323,7 +323,7 @@ namespace RunnConnectAPI.Controllers
     }
 
 
-    // ═══════════════════ HELPERS PRIVADOS ═══════════════════
+    // ------------- HELPERS PRIVADOS --------------
 
     private (int userId, IActionResult? error) ValidarOrganizador()
     {

@@ -8,6 +8,8 @@ using RunnConnectAPI.Models.Dto.Categoria;
 using RunnConnectAPI.Repositories;
 using System.Security.Claims;
 
+using RunnConnectAPI.Models.Dto.Notificacion;
+
 namespace RunnConnectAPI.Controllers
 {
   [ApiController]
@@ -17,11 +19,17 @@ namespace RunnConnectAPI.Controllers
     private readonly EventoRepositorio _eventoRepositorio;
     private readonly UsuarioRepositorio _usuarioRepositorio;
     private readonly CategoriaRepositorio _categoriaRepositorio;
-    public EventoController(EventoRepositorio eventoRepositorio, UsuarioRepositorio usuarioRepositorio, CategoriaRepositorio categoriaRepositorio)
+
+    //notificaciones
+    private readonly NotificacionRepositorio _notificacionRepositorio;
+
+    //inyectamos en el constructor
+    public EventoController(EventoRepositorio eventoRepositorio, UsuarioRepositorio usuarioRepositorio, CategoriaRepositorio categoriaRepositorio, NotificacionRepositorio notificacionRepositorio) 
     {
-      _eventoRepositorio = eventoRepositorio;
+      _eventoRepositorio = eventoRepositorio; //asignamos
       _usuarioRepositorio = usuarioRepositorio;
       _categoriaRepositorio = categoriaRepositorio;
+      _notificacionRepositorio= notificacionRepositorio; 
     }
 
     /*Endpoint publicos (sin autenticacion) para el usuario nuevo antes de loguearse, pueda ver los proximos eventos, y posterior
@@ -395,7 +403,7 @@ namespace RunnConnectAPI.Controllers
     }
 
     /*PUT: api/Evento/{id}/CambiarEstado - Cambiamos el estado de un evento (publicado, cancelado, finalizado)
-    Solo el orga que creo el evento puede cambiar su estado*/
+    Solo el orga que creo el evento puede cambiar su estado, tambien enviamos una notificacion*/
     [Authorize]
     [HttpPut("{id}/CambiarEstado")]
     public async Task<IActionResult> CambiarEstadoEvento(int id, [FromBody] CambiarEstadoEventoRequest request)
@@ -418,12 +426,26 @@ namespace RunnConnectAPI.Controllers
 
         var estadoAnterior = evento.Estado;
 
+        //cambiamos el estado en tabla eventos
         await _eventoRepositorio.CambiarEstadoAsync(id, request.NuevoEstado);
 
-        // TODO: Si es cancelación, notificar a inscriptos
-        if (request.NuevoEstado.ToLower() == "cancelado")
+        //creamos la notificacion
+        // si el estado es cancelado, finalizado o cualquier cambio relevante
+        if (!string.IsNullOrEmpty(request.Motivo)) 
         {
-          // await _notificacionService.NotificarCancelacionAsync(id, request.Motivo);
+            // Preparamos el título automático
+            string tituloNotif = $"Evento {request.NuevoEstado.ToUpper()}";
+            if(request.NuevoEstado.ToLower() == "cancelado") tituloNotif = "URGENTE: Evento Cancelado";
+
+            var nuevaNotificacion = new CrearNotificacionRequest
+            {
+                IdEvento = id,
+                Titulo = tituloNotif,
+                Mensaje = request.Motivo // aqui va el texto que se ecribio en el Dialog de Android
+            };
+
+            // Usamos el repositorio de notificaciones para guardar en 'notificaciones_evento'
+            await _notificacionRepositorio.CrearAsync(nuevaNotificacion, validacion.userId);
         }
 
         return Ok(new
