@@ -342,7 +342,7 @@ namespace RunnConnectAPI.Controllers
       }
     }
 
-    /*PUT: api/Evento/{id} - Actualiza un evento exitosamente (solo el organizador)*/
+    /*PUT: api/Evento/{id} - Actualiza un evento exitosamente (solo el organizador propio)*/
     [Authorize]
     [HttpPut("{id}")]
     public async Task<IActionResult> ActualizarEvento(int id, [FromBody] ActualizarEventoRequest request)
@@ -362,11 +362,13 @@ namespace RunnConnectAPI.Controllers
 
         if (evento.IdOrganizador != validacion.userId)
           return Forbid();
-
-        // Validar que no esté cancelado o finalizado
+        
+        /*bloqueo de estados*/
+        // si esta cancelado, no se puede editar
         if (evento.Estado == "cancelado")
           return BadRequest(new { message = "No se puede modificar un evento cancelado" });
 
+        //si esta finalizado, no se puede editar
         if (evento.Estado == "finalizado")
           return BadRequest(new { message = "No se puede modificar un evento finalizado" });
 

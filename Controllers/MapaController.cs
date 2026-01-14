@@ -48,7 +48,7 @@ namespace RunnConnectAPI.Controllers
     // -------------RUTAS--------------- 
 
     /// Obtiene la ruta (trazado GPS) de un evento
-    /// Endpoint público
+    /// Endpoint publico
     /// Retorna los puntos ordenados que forman el recorrido
     [HttpGet("Ruta")]
     public async Task<IActionResult> ObtenerRuta(int idEvento)
@@ -127,7 +127,7 @@ namespace RunnConnectAPI.Controllers
 
     // ------------- PUNTOS DE INTERES -------------
 
-    /// Obtiene todos los puntos de interés de un evento
+    /// Obtiene todos los puntos de interes de un evento
     /// Endpoint público
     /// Retorna: hidratación, primeros auxilios, meta, largada, etc.
     [HttpGet("PuntosInteres")]
@@ -148,7 +148,7 @@ namespace RunnConnectAPI.Controllers
       }
     }
 
-    /// Obtiene un punto de interés específico
+    /// Obtiene un punto de interes especifico
     [HttpGet("PuntosInteres/{idPunto}")]
     public async Task<IActionResult> ObtenerPuntoInteres(int idEvento, int idPunto)
     {
@@ -213,9 +213,9 @@ namespace RunnConnectAPI.Controllers
       }
     }
 
-    /// Crea múltiples puntos de interés a la vez
+    /// Crea multiples puntos de interes a la vez
     /// Requiere: Token JWT de Organizador (dueño del evento)
-    /// Útil para cargar todos los puntos de una vez desde la app
+    /// Util para cargar todos los puntos de una vez desde la app
     [HttpPost("PuntosInteres/Batch")]
     [Authorize]
     public async Task<IActionResult> CrearPuntosInteresMultiples(
@@ -249,7 +249,7 @@ namespace RunnConnectAPI.Controllers
       }
     }
 
-    /// Actualiza un punto de interés existente
+    /// Actualiza un punto de interes existente
     [HttpPut("PuntosInteres/{idPunto}")]
     [Authorize]
     public async Task<IActionResult> ActualizarPuntoInteres(

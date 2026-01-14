@@ -11,8 +11,8 @@ namespace RunnConnectAPI.Models.Dto.Evento
   public class CambiarEstadoEventoRequest
   {
     [Required(ErrorMessage = "El nuevo estado es obligatorio")]
-    [RegularExpression("^(publicado|cancelado|finalizado)$", 
-      ErrorMessage = "El estado debe ser: publicado, cancelado o finalizado")]
+    [RegularExpression("^(publicado|cancelado|finalizado|suspendido)$", 
+      ErrorMessage = "El estado debe ser: publicado, cancelado, suspendido o finalizado")]
     public string NuevoEstado { get; set; } = string.Empty;
 
   

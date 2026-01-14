@@ -166,7 +166,7 @@ namespace RunnConnectAPI.Repositories
     }
 
     /// Cambia el estado de un evento con validaciones de negocio
-    /// <exception cref="InvalidOperationException">Si la transición de estado no es valida</exception>
+    /// <exception cref="InvalidOperationException">Si la transicion de estado no es valida</exception>
     public async Task CambiarEstadoAsync(int idEvento, string nuevoEstado)
     {
       var evento = await _context.Eventos.FindAsync(idEvento);
@@ -177,11 +177,12 @@ namespace RunnConnectAPI.Repositories
       nuevoEstado = nuevoEstado.ToLower().Trim();
 
       // Validar estado valido
-      var estadosValidos = new[] { "publicado", "cancelado", "finalizado" };
+      var estadosValidos = new[] { "publicado", "cancelado", "finalizado", "suspendido" };
+      
       if (!estadosValidos.Contains(nuevoEstado))
         throw new ArgumentException($"Estado inválido. Estados válidos: {string.Join(", ", estadosValidos)}");
 
-      // Validaciones de lógica de negocio
+      // Validaciones de logica de negocio
       ValidarTransicionEstado(evento, nuevoEstado);
 
       evento.Estado = nuevoEstado;
@@ -214,8 +215,8 @@ namespace RunnConnectAPI.Repositories
         throw new InvalidOperationException("No se puede cambiar el estado de un evento cancelado");
 
       // No permitir volver a publicado desde finalizado
-      if (estadoActual == "finalizado" && nuevoEstado == "publicado")
-        throw new InvalidOperationException("No se puede publicar un evento ya finalizado");
+      if (estadoActual == "finalizado" && (nuevoEstado == "publicado" || nuevoEstado=="suspendido"))
+        throw new InvalidOperationException("No se puede publicar o reactivar un evento ya finalizado");
 
       // No se puede finalizar un evento que aun no ocurrio
       if (nuevoEstado == "finalizado" && evento.FechaHora > DateTime.Now)
