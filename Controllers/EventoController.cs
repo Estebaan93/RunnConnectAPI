@@ -59,7 +59,16 @@ namespace RunnConnectAPI.Controllers
           InscriptosActuales = e.Categorias?
                 .SelectMany(c => c.Inscripciones)
                 .Count(i => i.EstadoPago == "pagado") ?? 0,
-          NombreOrganizador = e.Organizador?.Nombre ?? "Sin informacion"
+          NombreOrganizador = e.Organizador?.Nombre ?? "Sin informacion",
+          Categorias = e.Categorias?.Select(c => new CategoriaEventoResponse
+          {
+              IdCategoria = c.IdCategoria,
+              Nombre = c.Nombre, // ¡Esto es lo que necesitamos para el Chip!
+              CostoInscripcion = c.CostoInscripcion,
+              // Puedes mapear el resto si quieres, pero con Nombre alcanza para la UI
+              Genero = c.Genero
+          }).ToList()
+
         }).ToList();
 
         return Ok(new EventosPaginadosResponse

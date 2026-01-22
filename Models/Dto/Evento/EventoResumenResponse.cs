@@ -1,5 +1,7 @@
 //Models/Dto/Evento/EventoResumenResponse.cs
 
+using RunnConnectAPI.Models.Dto.Categoria;
+
 namespace RunnConnectAPI.Models.Dto.Evento
 {
  
@@ -18,7 +20,9 @@ namespace RunnConnectAPI.Models.Dto.Evento
 
     
     /// Nombre del organizador (de la tabla usuarios)
-   
     public string NombreOrganizador { get; set; } = string.Empty;
+
+    public List<CategoriaEventoResponse>? Categorias {get; set; }
   }
+
 }
