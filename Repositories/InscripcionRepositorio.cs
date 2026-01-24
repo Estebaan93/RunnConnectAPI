@@ -372,5 +372,30 @@ namespace RunnConnectAPI.Repositories
               && i.EstadoPago == "pagado");
     }
 
+
+    /* Permite al organizador forzar la baja de un runner, sin importar si ya pagó.
+      Salta las validaciones de transición de pago normales.*/
+    public async Task DarBajaPorOrganizadorAsync(int idInscripcion)
+    {
+      var inscripcion = await _context.Inscripciones.FindAsync(idInscripcion);
+
+      if (inscripcion == null)
+        throw new KeyNotFoundException("Inscripción no encontrada");
+
+      // Si ya está cancelada, no hacemos nada o lanzamos error (opcional)
+      if (inscripcion.EstadoPago == "cancelado")
+        throw new ArgumentException("La inscripción ya se encuentra cancelada.");
+
+      // FORZAMOS el estado a cancelado directamente
+      // NO llamamos a ValidarTransicionEstado() porque es una acción administrativa
+      inscripcion.EstadoPago = "cancelado";
+
+      // Opcional: Podrías guardar la fecha de baja o quién lo hizo si tuvieras esos campos
+      // inscripcion.FechaBaja = DateTime.Now; 
+
+      await _context.SaveChangesAsync();
+    }
+
+
   }
 }
