@@ -316,7 +316,7 @@ namespace RunnConnectAPI.Controllers
 
         if (inscripcion.EstadoPago == "procesando")
         {
-          return BadRequest(new {message="Ya has enviado el comprobante. Por favor espera a que el organizador confirme o rechace tu pago para realizar cambios."});
+          return BadRequest(new { message = "Ya has enviado el comprobante. Por favor espera a que el organizador confirme o rechace tu pago para realizar cambios." });
         }
 
         if (inscripcion.EstadoPago == "pagado")
@@ -492,7 +492,7 @@ namespace RunnConnectAPI.Controllers
         {
           message = "Inscripcion marcada como reembolsada",
           idInscripcion = id,
-          estadoNuevo= "reembolsado"
+          estadoNuevo = "reembolsado"
         });
       }
       catch (InvalidOperationException ex)
@@ -504,6 +504,52 @@ namespace RunnConnectAPI.Controllers
         return StatusCode(500, new { message = "Error al reembolsar", error = ex.Message });
       }
     }
+
+    //dar de baja un runner (solo organizador)
+    //PUT: api/Inscripcion/{id}/BajaRunner
+    [HttpPut("{id}/BajaRunner")]
+    public async Task<IActionResult> DarDeBajaInscripcion(int id, [FromBody] MotivoRequest request)
+    {
+      try
+      {
+        var validacion = ValidarOrganizador();
+        if (validacion.error != null) return validacion.error;
+
+        var inscripcion = await _inscripcionRepositorio.ObtenerPorIdAsync(id);
+        if (inscripcion == null) return NotFound(new { message = "Inscripcion no encontrada" });
+
+        // Verificar que la inscripción pertenece a un evento de este organizador
+        if (inscripcion.Categoria?.Evento?.IdOrganizador != validacion.userId)
+          return Forbid();
+
+        if (inscripcion.EstadoPago == "cancelado")
+          return BadRequest(new { message = "La inscripción ya está cancelada." });
+
+        // Forzar cambio de estado a cancelado
+        // Nota: Podrías querer guardar el motivo en la BD si tienes un campo para eso
+        await _inscripcionRepositorio.CambiarEstadoPagoAsync(id, "cancelado");
+
+        // Opcional: Enviar notificación al runner avisando que fue dado de baja (TODO)
+
+        return Ok(new
+        {
+          message = "Inscripción dada de baja exitosamente",
+          idInscripcion = id,
+          estadoNuevo = "cancelado",
+          motivo = request.Motivo
+        });
+      }
+      catch (Exception ex)
+      {
+        return StatusCode(500, new { message = "Error al dar de baja", error = ex.Message });
+      }
+    }
+    // DTO simple para recibir el motivo (agrégalo al final del archivo o en su propia clase)
+    public class MotivoRequest
+    {
+      public string Motivo { get; set; } = string.Empty;
+    }
+
 
 
     // Metodos Privados
@@ -546,6 +592,8 @@ namespace RunnConnectAPI.Controllers
 
       return int.Parse(userIdClaim.Value);
     }
+
+
 
   }
 }
