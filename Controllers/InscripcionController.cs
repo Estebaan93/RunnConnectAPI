@@ -522,14 +522,12 @@ namespace RunnConnectAPI.Controllers
         if (inscripcion.Categoria?.Evento?.IdOrganizador != validacion.userId)
           return Forbid();
 
-        if (inscripcion.EstadoPago == "cancelado")
-          return BadRequest(new { message = "La inscripción ya está cancelada." });
-
+        
         // Forzar cambio de estado a cancelado
         // Nota: Podrías querer guardar el motivo en la BD si tienes un campo para eso
         await _inscripcionRepositorio.DarBajaPorOrganizadorAsync(id);
 
-        // Opcional: Enviar notificacion al runner avisando que fue dado de baja (TODO)
+        //Enviar notificacion al runner avisando que fue dado de baja (TODO)
         return Ok(new
         {
           message = "Inscripción dada de baja exitosamente",
