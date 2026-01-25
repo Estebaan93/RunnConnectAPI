@@ -395,6 +395,33 @@ namespace RunnConnectAPI.Repositories
 
       await _context.SaveChangesAsync();
     }
+    
+    public async Task<List<Inscripcion>> BuscarGlobalPorOrganizadorAsync(int idOrganizador, string termino)
+    {
+        if (string.IsNullOrWhiteSpace(termino)) 
+            return new List<Inscripcion>();
+
+        termino = termino.ToLower().Trim();
+
+        return await _context.Inscripciones
+            // Incluir datos del Evento para saber de cuál se trata
+            .Include(i => i.Categoria).ThenInclude(c => c.Evento)
+            // Incluir datos del Usuario y Perfil para buscar por nombre/DNI
+            .Include(i => i.Usuario).ThenInclude(u => u.PerfilRunner)
+            
+            // 1. SEGURIDAD: Solo buscar en eventos de ESTE organizador
+            .Where(i => i.Categoria.Evento.IdOrganizador == idOrganizador)
+            
+            // 2. FILTRO: Nombre, Apellido o DNI
+            .Where(i => 
+                i.Usuario.Nombre.ToLower().Contains(termino) || 
+                (i.Usuario.PerfilRunner != null && i.Usuario.PerfilRunner.Apellido.ToLower().Contains(termino)) ||
+                (i.Usuario.PerfilRunner != null && i.Usuario.PerfilRunner.Dni.ToString().Contains(termino))
+            )
+            .OrderByDescending(i => i.FechaInscripcion) // Más recientes primero
+            .Take(50) // Límite por rendimiento
+            .ToListAsync();
+    }
 
 
   }
