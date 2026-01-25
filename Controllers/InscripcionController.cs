@@ -590,6 +590,48 @@ namespace RunnConnectAPI.Controllers
       return int.Parse(userIdClaim.Value);
     }
 
+    [HttpGet("Buscar")]
+   {
+        try
+        {
+            var (userId, error) = ValidarOrganizador();
+            if (error != null) return error;
+
+            if (string.IsNullOrWhiteSpace(busqueda))
+                return BadRequest(new { message = "Debe ingresar un término de búsqueda." });
+
+            // Llamada al repo
+            var resultados = await _inscripcionRepositorio.BuscarGlobalPorOrganizadorAsync(userId, busqueda);
+
+            // Mapeo a tu nuevo DTO: BusquedaInscripcionResponse
+            var response = resultados.Select(i => new BusquedaInscripcionResponse
+            {
+                IdInscripcion = i.IdInscripcion,
+                FechaInscripcion = i.FechaInscripcion,
+                EstadoPago = i.EstadoPago,
+                
+                IdEvento = i.Categoria.IdEvento,
+                NombreEvento = i.Categoria.Evento.Nombre,
+                NombreCategoria = i.Categoria.Nombre,
+                
+                Runner = new RunnerSimpleDto
+                {
+                    Nombre = i.Usuario.Nombre,
+                    // Manejo seguro de nulos con el operador '?' y '??'
+                    Apellido = i.Usuario.PerfilRunner?.Apellido ?? "",
+                    Dni = i.Usuario.PerfilRunner?.Dni.ToString() ?? "S/D",
+                    Email = i.Usuario.Email
+                }
+            }).ToList();
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Error en búsqueda global", error = ex.Message });
+        }
+    }
+
 
 
   }
