@@ -522,7 +522,7 @@ namespace RunnConnectAPI.Controllers
         if (inscripcion.Categoria?.Evento?.IdOrganizador != validacion.userId)
           return Forbid();
 
-        
+
         // Forzar cambio de estado a cancelado
         // Nota: Podrías querer guardar el motivo en la BD si tienes un campo para eso
         await _inscripcionRepositorio.DarBajaPorOrganizadorAsync(id);
@@ -590,8 +590,9 @@ namespace RunnConnectAPI.Controllers
       return int.Parse(userIdClaim.Value);
     }
 
-    [HttpGet("Buscar")]
-   {
+    [HttpGet("BuscarInscriptos")]
+    public async Task<IActionResult> BuscarInscriptos([FromQuery] string busqueda)
+    {
         try
         {
             var (userId, error) = ValidarOrganizador();
